@@ -1,0 +1,1 @@
+"""Point API application package."""

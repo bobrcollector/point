@@ -1,0 +1,24 @@
+[project]
+name = "point-api"
+version = "0.1.0"
+description = "Point API (FastAPI) for catalog and map module"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "sqlalchemy>=2.0",
+  "asyncpg>=0.29",
+  "alembic>=1.13",
+]
+
+[tool.uvicorn]
+factory = false
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
