@@ -797,7 +797,7 @@ export function HomePage() {
                   {listDisplayed.map((e) => (
                     <Link key={e.id} to={`/events/${e.id}`} className="card cardAsLink">
                       <article className="cardInner">
-                        <div className="cardCover" style={{ backgroundImage: e.coverUrl ? `url(${e.coverUrl})` : undefined }}>
+                        <div className="cardCover" style={{ backgroundImage: e.coverUrl ? `url(${e.coverUrl})` : undefined, position: 'relative' }}>
                           <div className="cardCoverOverlay" />
                           <div className="cardTop">
                             <div className="cardTopBadges">

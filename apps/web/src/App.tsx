@@ -1,7 +1,7 @@
 import type { ComponentType, SVGProps } from 'react'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import {
   IconArchive,
   IconCalendar,
@@ -18,8 +18,13 @@ import {
 import { BrandLogo } from './components/BrandLogo'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SidebarCitySelect } from './components/SidebarCitySelect'
+import { ensureDemoFavoriteReviews, ensureDemoUserEventData } from './lib/eventInteractionStorage'
+import { ensureTestEvent } from './lib/localEvents'
+import { ensureDemoUser, getDemoUser } from './lib/userSession'
 import { EventDetailPage } from './pages/EventDetailPage'
+import { FavoritesPage } from './pages/FavoritesPage'
 import { HomePage } from './pages/HomePage'
+import { MyEventsPage } from './pages/MyEventsPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { useCityStore } from './stores/cityStore'
 
@@ -61,6 +66,11 @@ const MOBILE_SHEET_LINKS: NavDef[] = [
 ]
 
 const PROFILE_PATHS = new Set(['/account', '/settings', '/login'])
+
+function EventDetailRoute() {
+  const { eventId } = useParams()
+  return <EventDetailPage key={eventId} />
+}
 
 function navClass({ isActive }: { isActive: boolean }) {
   return isActive ? 'navItem active' : 'navItem'
@@ -206,6 +216,10 @@ export default function App() {
   useEffect(() => {
     hydrate()
     detectCityFromGeolocation()
+    const user = ensureDemoUser()
+    const testId = ensureTestEvent(user.displayName)
+    ensureDemoUserEventData(testId)
+    ensureDemoFavoriteReviews(testId)
   }, [hydrate, detectCityFromGeolocation])
 
   return (
@@ -253,8 +267,8 @@ export default function App() {
               <IconUser />
             </div>
             <div className="userCardText">
-              <span className="userCardTitle">Аккаунт</span>
-              <span className="userCardSub">Профиль и безопасность</span>
+              <span className="userCardTitle">{getDemoUser().displayName}</span>
+              <span className="userCardSub">Аккаунт · вы вошли</span>
             </div>
             <span className="userCardChevron" aria-hidden>
               <IconChevronRight />
@@ -278,11 +292,11 @@ export default function App() {
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/events/:eventId" element={<EventDetailPage />} />
+          <Route path="/events/:eventId" element={<EventDetailRoute />} />
           <Route path="/search" element={<Navigate to="/#home-search" replace />} />
-          <Route path="/my" element={<PlaceholderPage title="Мои события" />} />
+          <Route path="/my" element={<MyEventsPage />} />
           <Route path="/create" element={<PlaceholderPage title="Создать событие" />} />
-          <Route path="/favorites" element={<PlaceholderPage title="Избранное" />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/archive" element={<PlaceholderPage title="Архив" />} />
           <Route path="/account" element={<PlaceholderPage title="Аккаунт" />} />
           <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />

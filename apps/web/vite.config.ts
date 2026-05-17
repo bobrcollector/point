@@ -9,7 +9,8 @@ export default defineConfig({
       // В dev фронт ходит на тот же origin (/api/...), Vite пересылает на FastAPI.
       '/api': {
         target: 'http://127.0.0.1:8000',
-        changeOrigin: true
+        changeOrigin: true,
+        ws: true
       }
     }
   },

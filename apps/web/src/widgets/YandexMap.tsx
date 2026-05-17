@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { env } from '../lib/env'
+import { boundsToParam } from '../lib/mapBounds'
 import { categoryGroupId } from '../features/catalog/categoryGroups'
 import { appendCategoryIcon } from './MapCategoryIcons'
 import { IconCrosshair, IconExpandMap, IconMinus, IconPlus } from './MapControlIcons'
@@ -87,16 +88,6 @@ type Props = {
   center?: MapCenter
   onBoundsChange?: (bounds: string) => void
   onPointClick?: (point: MapPoint) => void
-}
-
-function boundsToParam(bounds: number[][]): string {
-  const sw = bounds[0]
-  const ne = bounds[1]
-  const minLon = sw[0]
-  const minLat = sw[1]
-  const maxLon = ne[0]
-  const maxLat = ne[1]
-  return `${minLon},${minLat},${maxLon},${maxLat}`
 }
 
 const GROUP_PIN_CLASS: Record<string, string> = {

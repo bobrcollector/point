@@ -27,13 +27,26 @@ const EventsResponseSchema = z.object({
   items: z.array(CatalogEventItemSchema)
 })
 
-const EventDetailSchema = CatalogEventItemSchema.extend({
+export const EventDetailSchema = CatalogEventItemSchema.extend({
   description: z.string(),
   address_detail: z.string(),
   organizer_name: z.string(),
   gallery_urls: z.array(z.string()),
   participants_count: z.number().int()
 })
+
+export function catalogEventDetailQueryOptions(eventId: string) {
+  const numericId = Number(eventId)
+  return {
+    queryKey: ['catalog', 'event', eventId, 'detail'] as const,
+    enabled: /^\d+$/.test(eventId) && Number.isFinite(numericId) && numericId > 0,
+    queryFn: async (): Promise<ApiEventDetail> => {
+      const res = await api.get(`/api/v1/catalog/events/${numericId}`)
+      return EventDetailSchema.parse(res.data)
+    },
+    staleTime: 30_000
+  }
+}
 
 export type EventsQuery = {
   lat?: number
@@ -74,15 +87,10 @@ export function useCategories() {
 }
 
 export function useEventDetail(eventId: string | undefined) {
-  const numericId = eventId && /^\d+$/.test(eventId) ? Number(eventId) : NaN
+  const enabled = Boolean(eventId && /^\d+$/.test(eventId))
   return useQuery({
-    queryKey: ['catalog', 'event', numericId],
-    enabled: Number.isFinite(numericId) && numericId > 0,
-    queryFn: async (): Promise<ApiEventDetail> => {
-      const res = await api.get(`/api/v1/catalog/events/${numericId}`)
-      return EventDetailSchema.parse(res.data)
-    },
-    staleTime: 30_000
+    ...catalogEventDetailQueryOptions(eventId ?? ''),
+    enabled
   })
 }
 
