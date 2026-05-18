@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useAuthStore } from '../stores/authStore'
 import { AgeRatingBadge } from '../components/AgeRatingBadge'
 import { useEventDetail } from '../features/catalog/queries'
 import {
@@ -25,6 +26,8 @@ function eventShareUrl(eventId: string) {
 
 export function EventDetailPage() {
   const { eventId } = useParams()
+  const navigate = useNavigate()
+  const isAuthed = Boolean(useAuthStore((s) => s.token))
   const q = useEventDetail(eventId)
   const d = q.data
 
@@ -181,13 +184,19 @@ export function EventDetailPage() {
     }
   }
 
+  const requireAuth = () => {
+    if (isAuthed) return true
+    navigate('/login', { state: { from: `/events/${eventId}` } })
+    return false
+  }
+
   const onToggleFav = () => {
-    if (!eventId) return
+    if (!eventId || !requireAuth()) return
     setFav(toggleFavorite(eventId))
   }
 
   const onToggleGoing = () => {
-    if (!eventId) return
+    if (!eventId || !requireAuth()) return
     setGoing(toggleParticipating(eventId))
   }
 
@@ -279,7 +288,13 @@ export function EventDetailPage() {
               <button type="button" className={fav ? 'eventDetailBtn eventDetailBtnActive' : 'eventDetailBtn'} onClick={onToggleFav}>
                 {fav ? 'В избранном' : 'В избранное'}
               </button>
-              <button type="button" className="eventDetailBtn eventDetailBtnDanger" onClick={() => setReportOpen(true)}>
+              <button
+                type="button"
+                className="eventDetailBtn eventDetailBtnDanger"
+                onClick={() => {
+                  if (requireAuth()) setReportOpen(true)
+                }}
+              >
                 Пожаловаться
               </button>
             </div>

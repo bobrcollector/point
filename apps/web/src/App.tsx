@@ -21,6 +21,18 @@ import { SidebarCitySelect } from './components/SidebarCitySelect'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { HomePage } from './pages/HomePage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { LoginPage } from './pages/LoginPage'
+import { RegisterPage } from './pages/RegisterPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
+import { AccountPage } from './pages/AccountPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { AdminPage } from './pages/AdminPage'
+import { RequireAuth } from './components/RequireAuth'
+import { useMe } from './features/auth/queries'
+import { canModerate } from './features/auth/types'
+import { useAuthStore } from './stores/authStore'
 import { useCityStore } from './stores/cityStore'
 
 type NavGlyph = ComponentType<SVGProps<SVGSVGElement>>
@@ -202,11 +214,25 @@ function MobileBottomNav() {
 export default function App() {
   const hydrate = useCityStore((s) => s.hydrate)
   const detectCityFromGeolocation = useCityStore((s) => s.detectCityFromGeolocation)
+  const hydrateAuth = useAuthStore((s) => s.hydrate)
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
+  const setUser = useAuthStore((s) => s.setUser)
+  const meQ = useMe(Boolean(token))
 
   useEffect(() => {
     hydrate()
     detectCityFromGeolocation()
-  }, [hydrate, detectCityFromGeolocation])
+    hydrateAuth()
+  }, [hydrate, detectCityFromGeolocation, hydrateAuth])
+
+  useEffect(() => {
+    if (meQ.data) setUser(meQ.data)
+  }, [meQ.data, setUser])
+
+  const isAuthed = Boolean(token && user)
+  const showAdmin = canModerate(user?.role)
 
   return (
     <div className="appShell">
@@ -230,31 +256,37 @@ export default function App() {
 
             <div className="navSpacer" />
 
-            <div className="navGroupTitle">Сервис</div>
-            {SERVICE_ITEMS.map((item) => (
-              <NavLink key={item.to} to={item.to} className={navLinkClass(item)} title={item.title}>
-                <span className="navIcon" aria-hidden>
-                  <item.Icon />
-                </span>
-                <span className="navItemLabel">{item.label}</span>
-              </NavLink>
-            ))}
+            {showAdmin ? (
+              <>
+                <div className="navGroupTitle">Сервис</div>
+                {SERVICE_ITEMS.map((item) => (
+                  <NavLink key={item.to} to={item.to} className={navLinkClass(item)} title={item.title}>
+                    <span className="navIcon" aria-hidden>
+                      <item.Icon />
+                    </span>
+                    <span className="navItemLabel">{item.label}</span>
+                  </NavLink>
+                ))}
+              </>
+            ) : null}
           </nav>
         </div>
 
         <div className="sidebarFooter">
           <div className="footerDivider" role="presentation" />
           <NavLink
-            to="/account"
+            to={isAuthed ? '/account' : '/login'}
             className={({ isActive }: { isActive: boolean }) => `userCard${isActive ? ' active' : ''}`}
-            title="Аккаунт"
+            title={isAuthed ? 'Аккаунт' : 'Вход'}
           >
             <div className="userAvatar" aria-hidden>
               <IconUser />
             </div>
             <div className="userCardText">
-              <span className="userCardTitle">Аккаунт</span>
-              <span className="userCardSub">Профиль и безопасность</span>
+              <span className="userCardTitle">{isAuthed ? user?.display_name ?? 'Аккаунт' : 'Аккаунт'}</span>
+              <span className="userCardSub">
+                {isAuthed ? user?.email ?? 'Профиль' : 'Войдите для доступа'}
+              </span>
             </div>
             <span className="userCardChevron" aria-hidden>
               <IconChevronRight />
@@ -262,14 +294,26 @@ export default function App() {
           </NavLink>
 
           <nav className="nav navFooter" aria-label="Сервис аккаунта">
-            {FOOTER_NAV.map((item) => (
-              <NavLink key={item.to} to={item.to} className={navLinkClass(item)} title={item.title}>
+            {isAuthed ? (
+              <>
+                <NavLink to="/settings" className={navLinkClass(FOOTER_NAV[0])} title="Настройки">
+                  <span className="navIcon" aria-hidden>
+                    <IconSettings />
+                  </span>
+                  <span className="navItemLabel">Настройки</span>
+                </NavLink>
+                <button type="button" className="navItem navItemCta navItemButton" onClick={() => logout()} title="Выход">
+                  <span className="navItemLabel">Выход</span>
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" className={navLinkClass(FOOTER_NAV[1])} title="Вход">
                 <span className="navIcon" aria-hidden>
-                  <item.Icon />
+                  <IconLogIn />
                 </span>
-                <span className="navItemLabel">{item.label}</span>
+                <span className="navItemLabel">Вход</span>
               </NavLink>
-            ))}
+            )}
           </nav>
         </div>
       </aside>
@@ -280,14 +324,39 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/events/:eventId" element={<EventDetailPage />} />
           <Route path="/search" element={<Navigate to="/#home-search" replace />} />
-          <Route path="/my" element={<PlaceholderPage title="Мои события" />} />
-          <Route path="/create" element={<PlaceholderPage title="Создать событие" />} />
-          <Route path="/favorites" element={<PlaceholderPage title="Избранное" />} />
+          <Route
+            path="/my"
+            element={
+              <RequireAuth>
+                <PlaceholderPage title="Мои события" />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/create"
+            element={
+              <RequireAuth>
+                <PlaceholderPage title="Создать событие" />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/favorites"
+            element={
+              <RequireAuth>
+                <PlaceholderPage title="Избранное" />
+              </RequireAuth>
+            }
+          />
           <Route path="/archive" element={<PlaceholderPage title="Архив" />} />
-          <Route path="/account" element={<PlaceholderPage title="Аккаунт" />} />
-          <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />
-          <Route path="/admin" element={<PlaceholderPage title="Админ-панель" />} />
-          <Route path="/login" element={<PlaceholderPage title="Вход" />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/profile" element={<Navigate to="/account" replace />} />
           <Route path="*" element={<PlaceholderPage title="Страница не найдена" />} />
         </Routes>

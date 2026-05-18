@@ -7,6 +7,7 @@ import { normalizeCategoryName } from '../features/catalog/categoryGroups'
 import { AgeRatingBadge } from '../components/AgeRatingBadge'
 import { eventInCity, haversineMeters } from '../lib/cities'
 import { useCityStore } from '../stores/cityStore'
+import { useAuthStore } from '../stores/authStore'
 import { useCategories, useEvents } from '../features/catalog/queries'
 import { YandexMap } from '../widgets/YandexMap'
 import {
@@ -203,7 +204,11 @@ export function HomePage() {
       }))
   }, [spotlightQuery.data?.items, city])
 
-  const [userInterests] = useState<string[]>(() => {
+  const authUser = useAuthStore((s) => s.user)
+  const userInterests = useMemo(() => {
+    if (authUser?.interests?.length) {
+      return authUser.interests.map((c) => normalizeCategoryName(c.name))
+    }
     try {
       const raw = localStorage.getItem('point:userInterests')
       const parsed = raw ? (JSON.parse(raw) as unknown) : null
@@ -212,7 +217,7 @@ export function HomePage() {
     } catch {
       return ['Концерты', 'Настолки']
     }
-  })
+  }, [authUser])
 
   const toggleCategory = (name: string) => {
     setFilters((s) => ({
