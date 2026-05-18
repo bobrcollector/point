@@ -28,7 +28,7 @@ build-backend = "setuptools.build_meta"
 where = ["."]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "httpx"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

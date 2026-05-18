@@ -5,6 +5,7 @@ alembic/versions/0001_initial_schema.py
 alembic/versions/0002_event_children_and_categories.py
 alembic/versions/0003_event_age_rating.py
 alembic/versions/0004_auth_profile_module.py
+alembic/versions/0005_account_type_and_avatar.py
 app/__init__.py
 app/main.py
 app/api/v1/admin/router.py
@@ -15,6 +16,11 @@ app/api/v1/auth/service.py
 app/api/v1/catalog/router.py
 app/api/v1/catalog/schemas.py
 app/api/v1/catalog/service.py
+app/api/v1/chat/__init__.py
+app/api/v1/chat/manager.py
+app/api/v1/chat/router.py
+app/api/v1/chat/schemas.py
+app/api/v1/chat/store.py
 app/api/v1/users/router.py
 app/api/v1/users/schemas.py
 app/api/v1/users/service.py
@@ -40,3 +46,6 @@ point_api.egg-info/SOURCES.txt
 point_api.egg-info/dependency_links.txt
 point_api.egg-info/requires.txt
 point_api.egg-info/top_level.txt
+tests/conftest.py
+tests/test_catalog_service.py
+tests/test_chat_ws.py
