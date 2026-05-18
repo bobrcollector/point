@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from app.db.session import AsyncSessionLocal
 from app.models import Category, Event, User
@@ -52,13 +52,17 @@ async def main() -> None:
                 print("Seed skipped: demo data already present (event id=101).")
             return
 
-        dev_user = User(email="dev@point.local", display_name="Point Dev", password_hash=None)
-        session.add(dev_user)
-        await session.flush()
+        dev_user = await session.scalar(select(User).where(User.email == "dev@point.local"))
+        if dev_user is None:
+            dev_user = User(email="dev@point.local", display_name="Point Dev", password_hash=None)
+            session.add(dev_user)
+            await session.flush()
 
-        for row in CATEGORY_SEEDS:
-            session.add(Category(id=int(row["id"]), name=str(row["name"])))
-        await session.flush()
+        category_count = await session.scalar(select(func.count()).select_from(Category)) or 0
+        if category_count == 0:
+            for row in CATEGORY_SEEDS:
+                session.add(Category(id=int(row["id"]), name=str(row["name"])))
+            await session.flush()
 
         cats = {c.id: c for c in (await session.execute(select(Category))).scalars().all()}
 
@@ -86,6 +90,8 @@ async def main() -> None:
                 participants_count=p_count,
                 is_for_children=bool(raw.get("is_for_children", False)),
                 age_rating_min=int(raw.get("age_rating_min", 0 if raw.get("is_for_children") else 12)),
+                status="published",
+                requires_registration=True,
             )
             ev.categories.append(cats[cat_id])
             session.add(ev)

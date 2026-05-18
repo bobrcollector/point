@@ -118,3 +118,92 @@ export async function reverseGeocodeCity(lat: number, lon: number, signal?: Abor
   const geo = data.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject
   return geo ? geoObjectToCity(geo) : null
 }
+
+export type VenueAddress = {
+  venueName: string
+  address: string
+}
+
+type AddressComponent = { kind?: string; name?: string }
+
+function stripPrefix(value: string, prefixes: RegExp) {
+  return value.replace(prefixes, '').trim()
+}
+
+function formatRussianAddress(components: AddressComponent[]): string {
+  const locality = components.find((c) => c.kind === 'locality')?.name
+  const street = components.find((c) => c.kind === 'street')?.name
+  const house = components.find((c) => c.kind === 'house')?.name
+
+  const parts: string[] = []
+  if (locality) {
+    const city = stripPrefix(locality, /^г\.?\s*/i)
+    parts.push(`г ${city}`)
+  }
+  if (street) {
+    const s = stripPrefix(street, /^ул\.?\s*/i)
+    parts.push(`ул ${s}`)
+  }
+  if (house) {
+    const h = stripPrefix(house, /^д\.?\s*/i)
+    parts.push(`д ${h}`)
+  }
+  return parts.join(', ')
+}
+
+function isHouseNumber(name: string) {
+  return /^\d+[а-яa-z0-9\-/]*$/i.test(name.trim())
+}
+
+function isPoiKind(kind: string, name: string) {
+  if (!name || isHouseNumber(name)) return false
+  if (kind === 'vegetation' || kind === 'metro' || kind === 'airport' || kind === 'hydro') return true
+  return kind !== 'house' && kind !== 'street' && kind !== 'locality' && kind !== 'district' && kind !== 'area'
+}
+
+/** Обратное геокодирование: название площадки (парк, бар…) и адрес (г …, ул …, д …). */
+export async function reverseGeocodeVenue(
+  lat: number,
+  lon: number,
+  signal?: AbortSignal
+): Promise<VenueAddress | null> {
+  const data = await fetchGeocoder({ geocode: `${lon},${lat}`, results: '7' }, signal)
+  const members = data.response?.GeoObjectCollection?.featureMember ?? []
+  if (!members.length) return null
+
+  let venueName = ''
+  let address = ''
+
+  for (const m of members) {
+    const geo = m.GeoObject
+    if (!geo) continue
+    const meta = geo.metaDataProperty?.GeocoderMetaData
+    const kind = meta?.kind ?? ''
+    const name = (geo.name ?? '').trim()
+    const components = meta?.Address?.Components ?? []
+    const formatted = formatRussianAddress(components)
+
+    if (!venueName && isPoiKind(kind, name)) venueName = name
+    if (!address && formatted) address = formatted
+    if (!address && kind === 'house' && formatted) address = formatted
+  }
+
+  const primary = members[0]?.GeoObject
+  const primaryMeta = primary?.metaDataProperty?.GeocoderMetaData
+  const primaryComponents = primaryMeta?.Address?.Components ?? []
+  const fullText = (primaryMeta?.text ?? '').trim()
+
+  if (!address) {
+    address = formatRussianAddress(primaryComponents) || fullText
+  }
+
+  if (!venueName) {
+    const primaryName = (primary?.name ?? '').trim()
+    const primaryKind = primaryMeta?.kind ?? ''
+    if (isPoiKind(primaryKind, primaryName)) venueName = primaryName
+  }
+
+  if (!venueName) venueName = 'Выбранная площадка'
+
+  return { venueName, address }
+}

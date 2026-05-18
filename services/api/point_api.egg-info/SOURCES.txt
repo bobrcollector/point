@@ -2,11 +2,18 @@ README.md
 pyproject.toml
 alembic/env.py
 alembic/versions/0001_initial_schema.py
+alembic/versions/0002_event_children_and_categories.py
+alembic/versions/0003_event_age_rating.py
+alembic/versions/0004_organizer_event_management.py
 app/__init__.py
 app/main.py
+app/api/deps.py
 app/api/v1/catalog/router.py
 app/api/v1/catalog/schemas.py
 app/api/v1/catalog/service.py
+app/api/v1/organizer/router.py
+app/api/v1/organizer/schemas.py
+app/api/v1/organizer/service.py
 app/core/config.py
 app/db/__init__.py
 app/db/base.py
@@ -15,6 +22,7 @@ app/models/__init__.py
 app/models/association.py
 app/models/category.py
 app/models/event.py
+app/models/event_ticket.py
 app/models/user.py
 app/seed/__init__.py
 app/seed/__main__.py

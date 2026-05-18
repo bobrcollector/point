@@ -18,13 +18,19 @@ import {
 import { BrandLogo } from './components/BrandLogo'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SidebarCitySelect } from './components/SidebarCitySelect'
-import { ensureDemoFavoriteReviews, ensureDemoUserEventData } from './lib/eventInteractionStorage'
-import { ensureTestEvent } from './lib/localEvents'
-import { ensureDemoUser, getDemoUser } from './lib/userSession'
+import {
+  ensureDemoFavoriteReviews,
+  ensureDemoUser,
+  ensureDemoUserEventData,
+  ensureTestEvent,
+  getDemoUser
+} from './lib/eventInteractionStorage'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { HomePage } from './pages/HomePage'
 import { MyEventsPage } from './pages/MyEventsPage'
+import { CreateEventPage } from './pages/CreateEventPage'
+import { EditEventPage } from './pages/EditEventPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { useCityStore } from './stores/cityStore'
 
@@ -295,7 +301,8 @@ export default function App() {
           <Route path="/events/:eventId" element={<EventDetailRoute />} />
           <Route path="/search" element={<Navigate to="/#home-search" replace />} />
           <Route path="/my" element={<MyEventsPage />} />
-          <Route path="/create" element={<PlaceholderPage title="Создать событие" />} />
+          <Route path="/create" element={<CreateEventPage />} />
+          <Route path="/events/:eventId/edit" element={<EditEventPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/archive" element={<PlaceholderPage title="Архив" />} />
           <Route path="/account" element={<PlaceholderPage title="Аккаунт" />} />

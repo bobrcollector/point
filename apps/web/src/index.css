@@ -3581,3 +3581,214 @@ button.mapEventCardGhost {
     right: 8px;
   }
 }
+
+/* --- Модуль создания событий (организатор) --- */
+
+.eventManagePage {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px 18px 40px;
+}
+
+.eventWizardSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.eventWizardStep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  cursor: pointer;
+  font: inherit;
+  color: var(--muted);
+}
+
+.eventWizardStep.active {
+  border-color: rgba(109, 40, 217, 0.35);
+  color: var(--text);
+  box-shadow: var(--ring);
+}
+
+.eventWizardStep.done {
+  color: var(--text);
+}
+
+.eventWizardStepNum {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(109, 40, 217, 0.12);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.eventWizardPanel {
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.eventWizardError {
+  color: #b91c1c;
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.eventWizardNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.eventWizardCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+.eventTimeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.eventTimePart {
+  margin: 0;
+}
+
+.eventWizardMap {
+  min-height: 360px;
+  margin: 12px 0;
+}
+
+.eventWizardFilterPanel {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mapPickMode .map {
+  cursor: crosshair;
+}
+
+.eventWizardGalleryItem {
+  position: relative;
+}
+
+.eventWizardGalleryRemove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.eventDetailTickets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.eventDetailTicketRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.eventWizardMapActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.eventWizardPreview {
+  height: 160px;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+
+.eventWizardGalleryItem .eventDetailGalleryBtn {
+  min-height: 88px;
+}
+
+.eventWizardTicketRow {
+  display: grid;
+  grid-template-columns: 1fr 100px 90px 40px;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.eventListCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.eventListCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.myEventsPage .myEventsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.myEventsSection {
+  margin-bottom: 28px;
+}
+
+.myEventsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.myEventsEmpty {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .eventWizardTicketRow {
+    grid-template-columns: 1fr;
+  }
+}

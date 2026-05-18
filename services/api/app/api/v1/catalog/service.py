@@ -86,7 +86,12 @@ def event_distance_m(ev: Event, lat: float, lon: float) -> int | None:
 
 
 async def load_all_events(session: AsyncSession) -> list[Event]:
-    res = await session.execute(select(Event).options(selectinload(Event.categories)).order_by(Event.event_datetime))
+    res = await session.execute(
+        select(Event)
+        .where(Event.status == "published")
+        .options(selectinload(Event.categories))
+        .order_by(Event.event_datetime)
+    )
     return list(res.scalars())
 
 
@@ -197,11 +202,25 @@ def event_to_detail_dict(ev: Event) -> dict[str, object]:
             "organizer_name": ev.organizer_name,
             "gallery_urls": urls,
             "participants_count": int(ev.participants_count),
+            "requires_registration": bool(ev.requires_registration),
+            "ticket_types": [
+                {
+                    "id": t.id,
+                    "name": t.name,
+                    "price": float(t.price),
+                    "quantity": int(t.quantity),
+                }
+                for t in sorted(ev.ticket_types, key=lambda x: (x.sort_order, x.id))
+            ],
         }
     )
     return base
 
 
 async def get_event_by_id(session: AsyncSession, event_id: int) -> Event | None:
-    res = await session.execute(select(Event).where(Event.id == event_id).options(selectinload(Event.categories)))
+    res = await session.execute(
+        select(Event)
+        .where(Event.id == event_id, Event.status == "published")
+        .options(selectinload(Event.categories), selectinload(Event.ticket_types))
+    )
     return res.scalar_one_or_none()

@@ -22,6 +22,13 @@ class EventItem(BaseModel):
     categories: list[Category] = []
 
 
+class TicketTypePublic(BaseModel):
+    id: int
+    name: str
+    price: float
+    quantity: int
+
+
 class EventDetail(EventItem):
     """Полная карточка события для страницы мероприятия."""
 
@@ -30,6 +37,8 @@ class EventDetail(EventItem):
     organizer_name: str
     gallery_urls: list[str] = []
     participants_count: int = 0
+    requires_registration: bool = True
+    ticket_types: list[TicketTypePublic] = []
 
 
 class EventsResponse(BaseModel):

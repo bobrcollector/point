@@ -4,7 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { AgeRatingBadge } from '../components/AgeRatingBadge'
 import { EventDetailGallery } from '../components/EventDetailGallery'
 import { OrganizerChatPanel } from '../components/OrganizerChatPanel'
-import { useResolvedEventDetail } from '../features/catalog/useResolvedEventDetail'
+import { useResolvedEventDetail } from '../features/catalog/queries'
 import {
   addReport,
   addReview,
@@ -15,8 +15,7 @@ import {
   toggleParticipating,
   type StoredReview
 } from '../lib/eventInteractionStorage'
-import { getEventDetailBack } from '../lib/eventDetailBack'
-import { getDemoUser } from '../lib/userSession'
+import { getDemoUser, getEventDetailBack } from '../lib/eventInteractionStorage'
 
 type ReviewSort = 'newest' | 'oldest' | 'rating_desc' | 'rating_asc'
 
@@ -297,11 +296,29 @@ export function EventDetailPage() {
 
         <section className="eventDetailPanel eventDetailGridPrice" aria-labelledby="event-price">
           <h2 id="event-price" className="eventDetailPanelTitle">
-            Стоимость
+            {d.requires_registration === false ? 'Участие' : 'Стоимость'}
           </h2>
-          <p className="eventDetailDesc" style={{ fontSize: 18, fontWeight: 800 }}>
-            {d.price === 0 ? 'Бесплатно' : `${d.price} ₽`}
-          </p>
+          {d.requires_registration === false ? (
+            <p className="eventDetailDesc" style={{ fontSize: 16, fontWeight: 700 }}>
+              Запись не требуется — можно просто прийти
+            </p>
+          ) : (d.ticket_types?.length ?? 0) > 0 ? (
+            <div className="eventDetailTickets">
+              {d.ticket_types!.map((t) => (
+                <div key={t.id} className="eventDetailTicketRow">
+                  <span style={{ fontWeight: 700 }}>{t.name}</span>
+                  <span>
+                    {t.price === 0 ? 'Бесплатно' : `${t.price} ₽`}
+                    {t.quantity > 0 ? ` · ${t.quantity} мест` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="eventDetailDesc" style={{ fontSize: 18, fontWeight: 800 }}>
+              {d.price === 0 ? 'Бесплатно' : `от ${d.price} ₽`}
+            </p>
+          )}
         </section>
 
         <section className="eventDetailPanel eventDetailGridAbout" aria-labelledby="event-about">
