@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { env } from '../lib/env'
-import { boundsToParam } from '../lib/mapBounds'
+import { boundsToParam } from '../lib/cities'
 import { categoryGroupId } from '../features/catalog/categoryGroups'
 import { appendCategoryIcon } from './MapCategoryIcons'
 import { IconCrosshair, IconExpandMap, IconMinus, IconPlus } from './MapControlIcons'
@@ -88,6 +88,8 @@ type Props = {
   center?: MapCenter
   onBoundsChange?: (bounds: string) => void
   onPointClick?: (point: MapPoint) => void
+  /** Клик по карте — выбор координат (режим организатора) */
+  onLocationPick?: (lat: number, lon: number) => void
 }
 
 const GROUP_PIN_CLASS: Record<string, string> = {
@@ -172,7 +174,7 @@ async function loadClustererPkg(ymaps3: NonNullable<typeof window.ymaps3>) {
   }
 }
 
-export function YandexMap({ points, center, onBoundsChange, onPointClick }: Props) {
+export function YandexMap({ points, center, onBoundsChange, onPointClick, onLocationPick }: Props) {
   const elRef = useRef<HTMLDivElement | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [geoPending, setGeoPending] = useState(false)
@@ -183,6 +185,8 @@ export function YandexMap({ points, center, onBoundsChange, onPointClick }: Prop
   const markerRefs = useRef<unknown[]>([])
   const onBoundsChangeRef = useRef<Props['onBoundsChange']>(onBoundsChange)
   const onPointClickRef = useRef<Props['onPointClick']>(onPointClick)
+  const onLocationPickRef = useRef<Props['onLocationPick']>(onLocationPick)
+  const pickListenerRef = useRef<unknown | null>(null)
   const pointsRef = useRef<MapPoint[]>(points)
   const lastBoundsRef = useRef<string | null>(null)
   const clusterPkgRef = useRef<{ YMapClusterer: any; clusterByGrid: any } | null>(null)
@@ -215,6 +219,10 @@ export function YandexMap({ points, center, onBoundsChange, onPointClick }: Prop
   useEffect(() => {
     onPointClickRef.current = onPointClick
   }, [onPointClick])
+
+  useEffect(() => {
+    onLocationPickRef.current = onLocationPick
+  }, [onLocationPick])
 
   useEffect(() => {
     pointsRef.current = points
@@ -277,6 +285,19 @@ export function YandexMap({ points, center, onBoundsChange, onPointClick }: Prop
             // ignore
           }
         }
+
+        if (onLocationPickRef.current && !pickListenerRef.current) {
+          pickListenerRef.current = new ymaps3.YMapListener({
+            layer: 'any',
+            onClick: (_object: unknown, event: { coordinates?: [number, number] }) => {
+              const coords = event?.coordinates
+              if (!coords || coords.length < 2) return
+              const [lon, lat] = coords
+              onLocationPickRef.current?.(lat, lon)
+            }
+          })
+          map.addChild(pickListenerRef.current)
+        }
       } catch (e) {
         if (cancelled) return
         setError(e instanceof Error ? e.message : 'Ошибка карты')
@@ -299,6 +320,8 @@ export function YandexMap({ points, center, onBoundsChange, onPointClick }: Prop
       clustererRef.current = null
       if (listenerRef.current && map?.removeChild) map.removeChild(listenerRef.current)
       listenerRef.current = null
+      if (pickListenerRef.current && map?.removeChild) map.removeChild(pickListenerRef.current)
+      pickListenerRef.current = null
       if (map?.destroy) map.destroy()
       mapRef.current = null
     }
@@ -537,7 +560,7 @@ export function YandexMap({ points, center, onBoundsChange, onPointClick }: Prop
   if (error) return <div className="mapError">{error}</div>
 
   return (
-    <div className="mapWithControls">
+    <div className={onLocationPick ? 'mapWithControls mapPickMode' : 'mapWithControls'}>
       <div ref={elRef} className="map" />
       <div className="mapToolStack" role="toolbar" aria-label="Управление картой">
         <button type="button" className="mapToolBtn" onClick={zoomIn} title="Приблизить" aria-label="Приблизить карту">

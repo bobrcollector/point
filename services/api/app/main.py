@@ -12,6 +12,7 @@ from app.api.v1.auth.router import router as auth_router
 from app.api.v1.chat.router import router as chat_router
 from app.api.v1.catalog.router import router as catalog_router
 from app.api.v1.users.router import router as users_router
+from app.api.v1.organizer.router import router as organizer_router
 from app.core.config import settings
 from app.db.session import engine, get_db
 
@@ -39,10 +40,12 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
     app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
     app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
+    app.include_router(organizer_router, prefix="/api/v1/organizer", tags=["organizer"])
 
     upload_path = Path(settings.upload_dir)
     upload_path.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=str(upload_path)), name="uploads")
+    app.mount("/api/v1/media", StaticFiles(directory=str(upload_path)), name="media")
 
     @app.get("/health")
     async def health():

@@ -21,11 +21,20 @@ export type EventsResponse = {
   items: ApiEventItem[]
 }
 
+export type ApiTicketType = {
+  id: number
+  name: string
+  price: number
+  quantity: number
+}
+
 export type ApiEventDetail = ApiEventItem & {
   description: string
   address_detail: string
   organizer_name: string
   gallery_urls: string[]
   participants_count: number
+  requires_registration?: boolean
+  ticket_types?: ApiTicketType[]
 }
 

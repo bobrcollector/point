@@ -72,7 +72,7 @@ export function LoginPage() {
           {login.isPending ? 'Входим…' : 'Войти'}
         </button>
       </form>
-      <p className="authHint">Демо: dev@point.local / dev12345</p>
+      <p className="authHint">Демо: dev@point-demo.ru / dev12345</p>
     </AuthFormLayout>
   )
 }

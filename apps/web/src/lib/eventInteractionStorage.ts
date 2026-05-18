@@ -1,3 +1,5 @@
+import type { ApiEventDetail } from '../features/catalog/types'
+
 const KEY_FAV = 'point:favoriteEventIds'
 const KEY_PART = 'point:eventParticipatingIds'
 const KEY_CREATED = 'point:createdEventIds'
@@ -211,4 +213,167 @@ export function ensureDemoUserEventData(testEventId: string) {
   setFavoriteIds([...fav])
   localStorage.setItem(KEY_DEMO_SEEDED, '1')
   ensureDemoFavoriteReviews()
+}
+
+// --- Демо-пользователь (офлайн-сессия) ---
+
+const KEY_DEMO_USER = 'point:demoUser'
+
+export type DemoUser = {
+  displayName: string
+  email: string
+}
+
+const DEFAULT_DEMO_USER: DemoUser = {
+  displayName: 'Алексей Демо',
+  email: 'demo@point.local'
+}
+
+export function getDemoUser(): DemoUser {
+  try {
+    const raw = localStorage.getItem(KEY_DEMO_USER)
+    if (!raw) return DEFAULT_DEMO_USER
+    const parsed = JSON.parse(raw) as Partial<DemoUser>
+    return {
+      displayName: typeof parsed.displayName === 'string' ? parsed.displayName : DEFAULT_DEMO_USER.displayName,
+      email: typeof parsed.email === 'string' ? parsed.email : DEFAULT_DEMO_USER.email
+    }
+  } catch {
+    return DEFAULT_DEMO_USER
+  }
+}
+
+export function ensureDemoUser(): DemoUser {
+  const user = getDemoUser()
+  localStorage.setItem(KEY_DEMO_USER, JSON.stringify(user))
+  return user
+}
+
+// --- Локальные события (localStorage) ---
+
+const KEY_LOCAL_EVENTS = 'point:localEvents'
+export const DEMO_LOCAL_EVENT_ID = 'local-demo-1'
+
+export type LocalEventRecord = {
+  id: string
+  title: string
+  event_datetime: string
+  location: string
+  address_detail: string
+  description: string
+  price: number
+  average_rating?: number | null
+  cover_image_url?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  organizer_name: string
+  gallery_urls: string[]
+  participants_count: number
+  categories: { id: number; name: string }[]
+  is_for_children?: boolean
+  age_rating_min?: number
+}
+
+function readLocalEventsAll(): LocalEventRecord[] {
+  try {
+    const raw = localStorage.getItem(KEY_LOCAL_EVENTS)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? (parsed as LocalEventRecord[]) : []
+  } catch {
+    return []
+  }
+}
+
+function writeLocalEventsAll(rows: LocalEventRecord[]) {
+  localStorage.setItem(KEY_LOCAL_EVENTS, JSON.stringify(rows))
+}
+
+export function readLocalEvents(): LocalEventRecord[] {
+  return readLocalEventsAll()
+}
+
+export function getLocalEventById(id: string): LocalEventRecord | undefined {
+  return readLocalEventsAll().find((e) => e.id === id)
+}
+
+export function isLocalEventId(id: string | undefined): boolean {
+  return Boolean(id && (id.startsWith('local-') || id.startsWith('local_')))
+}
+
+export function localEventToApiDetail(row: LocalEventRecord): ApiEventDetail {
+  return {
+    event_id: 0,
+    title: row.title,
+    event_datetime: row.event_datetime,
+    location: row.location,
+    price: row.price,
+    average_rating: row.average_rating ?? null,
+    cover_image_url: row.cover_image_url ?? null,
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+    is_for_children: row.is_for_children,
+    age_rating_min: row.age_rating_min,
+    categories: row.categories,
+    description: row.description,
+    address_detail: row.address_detail,
+    organizer_name: row.organizer_name,
+    gallery_urls: row.gallery_urls,
+    participants_count: row.participants_count
+  }
+}
+
+function buildDemoLocalEvent(organizerName: string): LocalEventRecord {
+  const inThreeDays = new Date()
+  inThreeDays.setDate(inThreeDays.getDate() + 3)
+  inThreeDays.setHours(19, 0, 0, 0)
+  return {
+    id: DEMO_LOCAL_EVENT_ID,
+    title: 'Нетворкинг для IT-специалистов',
+    event_datetime: inThreeDays.toISOString(),
+    location: 'Коворкинг «Точка»',
+    address_detail: 'Москва, ул. Тверская, 12, 3 этаж',
+    description:
+      'Неформальная встреча разработчиков и продактов: короткие питчи, обмен контактами и обсуждение pet-проектов. Напитки включены.',
+    price: 0,
+    average_rating: 4.6,
+    cover_image_url: null,
+    latitude: 55.757,
+    longitude: 37.615,
+    organizer_name: organizerName,
+    gallery_urls: [],
+    participants_count: 24,
+    categories: [{ id: 21, name: 'Нетворкинг' }],
+    is_for_children: false,
+    age_rating_min: 18
+  }
+}
+
+/** Создаёт демо-событие в localStorage, если его ещё нет. Возвращает id. */
+export function ensureTestEvent(organizerName: string): string {
+  const rows = readLocalEventsAll()
+  const idx = rows.findIndex((e) => e.id === DEMO_LOCAL_EVENT_ID)
+  const demo = buildDemoLocalEvent(organizerName)
+  if (idx >= 0) {
+    rows[idx] = { ...demo, ...rows[idx], organizer_name: organizerName }
+    writeLocalEventsAll(rows)
+    return DEMO_LOCAL_EVENT_ID
+  }
+  writeLocalEventsAll([demo, ...rows])
+  return DEMO_LOCAL_EVENT_ID
+}
+
+// --- Навигация «назад» со страницы события ---
+
+export type EventDetailBackState = {
+  from?: string
+  label?: string
+}
+
+export function getEventDetailBack(state: unknown): { to: string; label: string } {
+  const s = state as EventDetailBackState | null | undefined
+  if (s?.from) {
+    return { to: s.from, label: s.label ?? '← Назад' }
+  }
+  return { to: '/', label: '← Лента' }
 }

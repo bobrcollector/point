@@ -1,3 +1,4 @@
 alembic
 app
 tests
+uploads

@@ -3813,449 +3813,103 @@ button.mapEventCardGhost {
   }
 }
 
+
 /* Auth & account module */
-.authPage {
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-.authCard {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 28px;
-  padding: 24px 22px;
-  box-shadow: var(--shadow);
-}
-
-.authBrand {
-  margin-bottom: 12px;
-}
-
-.authTitle {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-
-.authSub {
-  color: var(--muted);
-  font-size: 14px;
-  margin: 6px 0 18px;
-}
-
-.authForm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.authInput {
-  width: 100%;
-}
-
-.authTextarea {
-  min-height: 96px;
-  padding: 10px 12px;
-  resize: vertical;
-}
-
-.authSubmit {
-  width: 100%;
-  margin-top: 6px;
-}
-
-.authError {
-  color: #b91c1c;
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.authSuccess {
-  color: #047857;
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.authFooter {
-  margin-top: 16px;
-  font-size: 14px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.authFooter a {
-  color: var(--primary);
-  font-weight: 750;
-}
-
-.authHint {
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.authLinkMuted {
-  font-size: 13px;
-  color: var(--primary);
-  font-weight: 700;
-  align-self: flex-start;
-}
-
-.authLinkBtn {
-  margin-left: 8px;
-  border: none;
-  background: none;
-  color: var(--primary);
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.authBanner {
-  background: rgba(109, 40, 217, 0.08);
-  border: 1px solid rgba(109, 40, 217, 0.2);
-  border-radius: 14px;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.accountPage {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.accountHeader {
-  flex-wrap: wrap;
-}
-
-.accountSection {
+.authPage { max-width: 480px; margin: 0 auto; }
+.authCard,
+.accountSection,
+.adminCard,
+.profileViewCard {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 24px;
   padding: 18px;
   box-shadow: var(--shadow);
 }
+.authTitle { font-size: 22px; font-weight: 900; letter-spacing: -0.02em; }
+.authSub,
+.authHint,
+.profileViewHint,
+.profileViewMuted { color: var(--muted); }
+.authForm,
+.accountForm,
+.adminPage,
+.adminList,
+.accountPage { display: flex; flex-direction: column; gap: 10px; }
+.authInput { width: 100%; }
+.authTextarea { min-height: 96px; padding: 10px 12px; resize: vertical; }
+.authSubmit,
+.authLogoutBtn { width: 100%; }
+.authError { color: #b91c1c; font-size: 13px; font-weight: 650; }
+.authSuccess { color: #047857; font-size: 14px; font-weight: 650; }
+.authFooter { margin-top: 16px; font-size: 14px; color: var(--muted); text-align: center; }
+.authFooter a,
+.authLinkMuted,
+.authLinkBtn { color: var(--primary); font-weight: 700; }
+.authLinkMuted { font-size: 13px; align-self: flex-start; }
+.authLinkBtn { margin-left: 8px; border: none; background: none; cursor: pointer; font-size: 13px; }
+.authBanner { background: rgba(109, 40, 217, 0.08); border: 1px solid rgba(109, 40, 217, 0.2); border-radius: 14px; padding: 10px 14px; font-size: 14px; font-weight: 650; }
+.accountSectionTitle { font-size: 17px; font-weight: 850; margin: 0 0 8px; }
+.accountCheck,
+.profileTypeOption { display: flex; gap: 10px; font-weight: 650; }
+.interestGrid,
+.adminFilters,
+.adminCardHead,
+.adminCardBtns,
+.profileViewMeta,
+.profileViewInterests { display: flex; flex-wrap: wrap; gap: 8px; }
+.roleBadge,
+.statusBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.roleBadge { background: rgba(109, 40, 217, 0.12); color: var(--primary-2); }
+.status-pending { background: rgba(249, 115, 22, 0.15); color: #c2410c; }
+.status-approved,
+.verifiedMark { background: rgba(16, 185, 129, 0.15); color: #047857; font-weight: 700; }
+.status-rejected { background: rgba(239, 68, 68, 0.12); color: #b91c1c; }
+.navItemButton { width: 100%; text-align: left; font: inherit; }
+.profileTypePicker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.profileTypeOption { flex-direction: column; align-items: flex-start; padding: 12px; border-radius: 16px; border: 1px solid var(--border); background: #fff; cursor: pointer; text-align: left; transition: 0.15s ease; }
+.profileTypeOption strong { font-size: 14px; }
+.profileTypeOption span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.profileTypeOption.active { border-color: rgba(109, 40, 217, 0.45); background: rgba(109, 40, 217, 0.08); box-shadow: var(--ring); }
+.avatarUpload,
+.profileViewHero { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.avatarUploadPreview,
+.profileViewAvatar { width: 88px; height: 88px; border-radius: 24px; overflow: hidden; background: rgba(109, 40, 217, 0.1); display: grid; place-items: center; flex-shrink: 0; border: 1px solid var(--border); }
+.profileViewAvatar { width: 96px; height: 96px; border-radius: 28px; }
+.avatarUploadPreview img,
+.profileViewAvatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatarUploadPreview svg,
+.profileViewAvatar svg { width: 36px; height: 36px; opacity: 0.55; }
+.profileViewName { margin: 0 0 8px; font-size: 24px; font-weight: 900; letter-spacing: -0.02em; }
+.profileViewBlock + .profileViewBlock { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.profileViewLabel { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(20, 21, 26, 0.6); font-weight: 800; }
+.profileViewText { margin: 0; line-height: 1.55; white-space: pre-wrap; }
 
-.accountSectionTitle {
-  font-size: 17px;
-  font-weight: 850;
-  margin: 0 0 8px;
-}
+/* Organizer event management module */
+.eventManagePage { max-width: 980px; width: 100%; margin: 0 auto; padding: 18px 18px 40px; }
+.eventWizardSteps { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.eventWizardStep { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); cursor: pointer; font: inherit; color: var(--muted); }
+.eventWizardStep.active { border-color: rgba(109, 40, 217, 0.35); color: var(--text); box-shadow: var(--ring); }
+.eventWizardStep.done { color: var(--text); }
+.eventWizardStepNum { width: 22px; height: 22px; border-radius: 999px; background: rgba(109, 40, 217, 0.12); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+.eventWizardPanel { border-radius: 18px; border: 1px solid var(--border); background: var(--panel); padding: 18px; margin-bottom: 16px; }
+.eventWizardError { color: #b91c1c; font-size: 14px; margin: 0 0 12px; }
+.eventWizardNav { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.eventWizardCheck { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 14px; }
+.eventTimeRow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.eventTimePart { margin: 0; }
+.eventWizardMap { min-height: 360px; margin: 12px 0; }
+.eventWizardFilterPanel { padding: 0; border: none; background: transparent; box-shadow: none; }
+.mapPickMode .map { cursor: crosshair; }
+.eventWizardGalleryItem { position: relative; }
+.eventWizardGalleryRemove { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+.eventDetailTickets { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.eventDetailTicketRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+.eventWizardMapActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
+.eventWizardPreview { height: 160px; border-radius: 14px; background-size: cover; background-position: center; margin-bottom: 10px; border: 1px solid var(--border); }
+.eventWizardGalleryItem .eventDetailGalleryBtn { min-height: 88px; }
+.eventWizardTicketRow { display: grid; grid-template-columns: 1fr 100px 90px 40px; gap: 8px; margin-bottom: 8px; }
+.eventListCardActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.myEventsPage .myEventsHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+@media (max-width: 640px) { .eventWizardTicketRow, .eventTimeRow, .profileTypePicker { grid-template-columns: 1fr; } }
 
-.accountForm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.accountSectionBtn {
-  margin-top: 12px;
-}
-
-.accountCheck {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 650;
-}
-
-.interestGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 12px 0;
-}
-
-.roleBadge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(109, 40, 217, 0.12);
-  color: var(--primary-2);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.verifiedMark {
-  color: #047857;
-  font-weight: 700;
-}
-
-.navItemButton {
-  width: 100%;
-  text-align: left;
-  font: inherit;
-}
-
-.authLogoutBtn {
-  width: 100%;
-}
-
-.adminPage {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.adminFilters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.adminList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.adminCard {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 16px;
-  box-shadow: var(--shadow);
-}
-
-.adminCardHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.adminCardDesc {
-  margin: 0 0 8px;
-  line-height: 1.45;
-}
-
-.adminCardActions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.adminCardBtns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.statusBadge {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.status-pending {
-  background: rgba(249, 115, 22, 0.15);
-  color: #c2410c;
-}
-
-.status-approved {
-  background: rgba(16, 185, 129, 0.15);
-  color: #047857;
-}
-
-.status-rejected {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
-}
-
-.profileTypePicker {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.profileTypeOption {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: #fff;
-  cursor: pointer;
-  text-align: left;
-  transition: 0.15s ease;
-}
-
-.profileTypeOption strong {
-  font-size: 14px;
-}
-
-.profileTypeOption span {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.35;
-}
-
-.profileTypeOption.active {
-  border-color: rgba(109, 40, 217, 0.45);
-  background: rgba(109, 40, 217, 0.08);
-  box-shadow: var(--ring);
-}
-
-.avatarUpload {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.avatarUploadPreview {
-  width: 88px;
-  height: 88px;
-  border-radius: 24px;
-  overflow: hidden;
-  background: rgba(109, 40, 217, 0.1);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  border: 1px solid var(--border);
-}
-
-.avatarUploadPreview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatarUploadPreview svg {
-  width: 36px;
-  height: 36px;
-  opacity: 0.55;
-}
-
-.avatarUploadName {
-  font-weight: 850;
-  font-size: 16px;
-  margin-bottom: 6px;
-}
-
-.avatarUploadBtn {
-  margin-bottom: 4px;
-}
-
-@media (max-width: 560px) {
-  .profileTypePicker {
-    grid-template-columns: 1fr;
-  }
-}
-
-.profileViewCard {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 20px;
-  box-shadow: var(--shadow);
-}
-
-.profileViewHero {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-bottom: 18px;
-}
-
-.profileViewAvatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 28px;
-  overflow: hidden;
-  background: rgba(109, 40, 217, 0.1);
-  border: 1px solid var(--border);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.profileViewAvatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.profileViewAvatar svg {
-  width: 40px;
-  height: 40px;
-  opacity: 0.55;
-}
-
-.profileViewName {
-  margin: 0 0 8px;
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-
-.profileViewMeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.profileViewCity {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.profileViewBlock + .profileViewBlock {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.profileViewLabel {
-  margin: 0 0 8px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(20, 21, 26, 0.6);
-  font-weight: 800;
-}
-
-.profileViewText {
-  margin: 0;
-  line-height: 1.55;
-  white-space: pre-wrap;
-}
-
-.profileViewHint {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.profileViewMuted {
-  color: var(--muted);
-}
-
-.profileViewInterests {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.profileViewPill {
-  cursor: default;
-  pointer-events: none;
-}
-
-.accountPage {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}

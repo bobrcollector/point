@@ -369,11 +369,29 @@ export function EventDetailPage() {
 
         <section className="eventDetailPanel eventDetailGridPrice" aria-labelledby="event-price">
           <h2 id="event-price" className="eventDetailPanelTitle">
-            Стоимость
+            {d.requires_registration === false ? 'Участие' : 'Стоимость'}
           </h2>
-          <p className="eventDetailDesc" style={{ fontSize: 18, fontWeight: 800 }}>
-            {d.price === 0 ? 'Бесплатно' : `${d.price} ₽`}
-          </p>
+          {d.requires_registration === false ? (
+            <p className="eventDetailDesc" style={{ fontSize: 16, fontWeight: 700 }}>
+              Запись не требуется — можно просто прийти
+            </p>
+          ) : (d.ticket_types?.length ?? 0) > 0 ? (
+            <div className="eventDetailTickets">
+              {d.ticket_types!.map((t) => (
+                <div key={t.id} className="eventDetailTicketRow">
+                  <span style={{ fontWeight: 700 }}>{t.name}</span>
+                  <span>
+                    {t.price === 0 ? 'Бесплатно' : `${t.price} ₽`}
+                    {t.quantity > 0 ? ` · ${t.quantity} мест` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="eventDetailDesc" style={{ fontSize: 18, fontWeight: 800 }}>
+              {d.price === 0 ? 'Бесплатно' : `от ${d.price} ₽`}
+            </p>
+          )}
         </section>
 
         <section className="eventDetailPanel eventDetailGridAbout" aria-labelledby="event-about">

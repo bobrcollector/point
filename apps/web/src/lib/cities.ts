@@ -59,3 +59,13 @@ export function eventInCity(
   if (typeof lat !== 'number' || typeof lon !== 'number') return city.id === DEFAULT_CITY_ID
   return haversineMeters(city, { lat, lon }) <= radiusM
 }
+
+/** Yandex Maps v3 bounds → строка для API каталога (minLon,minLat,maxLon,maxLat). */
+export function boundsToParam(bounds: [[number, number], [number, number]]): string {
+  const [[lon1, lat1], [lon2, lat2]] = bounds
+  const minLon = Math.min(lon1, lon2)
+  const maxLon = Math.max(lon1, lon2)
+  const minLat = Math.min(lat1, lat2)
+  const maxLat = Math.max(lat1, lat2)
+  return `${minLon},${minLat},${maxLon},${maxLat}`
+}

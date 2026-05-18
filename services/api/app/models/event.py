@@ -32,11 +32,20 @@ class Event(Base):
     participants_count: Mapped[int] = mapped_column(Integer, server_default="0")
     is_for_children: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     age_rating_min: Mapped[int] = mapped_column(Integer, server_default="12", nullable=False)
+    status: Mapped[str] = mapped_column(String(20), server_default="draft", nullable=False, index=True)
+    requires_registration: Mapped[bool] = mapped_column(Boolean, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     organizer: Mapped["User"] = relationship("User", back_populates="events")
     categories: Mapped[list["Category"]] = relationship(
         "Category",
         secondary=event_categories,
         back_populates="events",
+    )
+    ticket_types: Mapped[list["EventTicketType"]] = relationship(
+        "EventTicketType",
+        back_populates="event",
+        cascade="all, delete-orphan",
+        order_by="EventTicketType.sort_order",
     )

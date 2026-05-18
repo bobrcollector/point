@@ -23,12 +23,9 @@ import { ensureDemoUser } from './lib/userSession'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { HomePage } from './pages/HomePage'
-import {
-  MyAttendingEventsRoute,
-  MyEventsLayout,
-  MyOrganizedEventsRoute,
-  MY_EVENTS_SUBNAV,
-} from './pages/MyEventsPage'
+import { MyEventsPage } from './pages/MyEventsPage'
+import { CreateEventPage } from './pages/CreateEventPage'
+import { EditEventPage } from './pages/EditEventPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -60,18 +57,10 @@ type NavGroup = {
   items: NavDef[]
 }
 
-const MY_EVENTS_NAV_ICONS: Record<string, NavGlyph> = {
-  '/my/organized': IconCalendar,
-  '/my/attending': IconUser,
-  '/create': IconPlusSquare,
-}
-
-const MY_EVENTS_NAV: NavDef[] = MY_EVENTS_SUBNAV.map((item) => ({
-  to: item.to,
-  title: item.to === '/create' ? 'Создать событие' : item.label,
-  label: item.label,
-  Icon: MY_EVENTS_NAV_ICONS[item.to] ?? IconCalendar,
-}))
+const MY_EVENTS_NAV: NavDef[] = [
+  { to: '/my', title: 'Мои события', label: 'Мои события', Icon: IconCalendar },
+  { to: '/create', title: 'Создать событие', label: 'Создать', Icon: IconPlusSquare },
+]
 
 const MENU_ITEMS: NavDef[] = [
   { to: '/', end: true, title: 'Лента и поиск', label: 'Лента', Icon: IconFeed },
@@ -372,23 +361,27 @@ export default function App() {
           <Route path="/events/:eventId" element={<EventDetailRoute />} />
           <Route path="/search" element={<Navigate to="/#home-search" replace />} />
           <Route
-            path="/my"
+            path="/my/*"
             element={
               <RequireAuth>
-                <MyEventsLayout />
+                <MyEventsPage />
               </RequireAuth>
             }
-          >
-            <Route index element={<Navigate to="organized" replace />} />
-            <Route path="organized" element={<MyOrganizedEventsRoute />} />
-            <Route path="attending" element={<MyAttendingEventsRoute />} />
-          </Route>
-          <Route path="/archive" element={<Navigate to="/my/attending" replace />} />
+          />
+          <Route path="/archive" element={<Navigate to="/my" replace />} />
           <Route
             path="/create"
             element={
               <RequireAuth>
-                <PlaceholderPage title="Создать событие" />
+                <CreateEventPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/events/:eventId/edit"
+            element={
+              <RequireAuth>
+                <EditEventPage />
               </RequireAuth>
             }
           />

@@ -17,6 +17,7 @@ services/api/uploads/
 # Python
 .venv/
 venv/
+services/api/uploads/
 __pycache__/
 *.pyc
 .pytest_cache/

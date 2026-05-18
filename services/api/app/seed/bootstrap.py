@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models import Category, Event, User
 from app.seed.data import CATEGORY_SEEDS, EVENT_SEEDS
+
+DEV_EMAIL = "dev@point-demo.ru"
+LEGACY_DEV_EMAIL = "dev@point.local"
+DEV_PASSWORD = "dev12345"
 
 
 def _cover_url(eid: int, raw: dict[str, object]) -> str:
@@ -42,12 +46,28 @@ async def _backfill_covers(session) -> int:
 
 
 async def _ensure_dev_admin(session) -> None:
-    dev = await session.scalar(select(User).where(User.email == "dev@point.local"))
-    if dev is None:
-        return
     changed = False
+    dev = await session.scalar(select(User).where(User.email == DEV_EMAIL))
+    legacy_dev = await session.scalar(select(User).where(User.email == LEGACY_DEV_EMAIL))
+    if dev is None and legacy_dev is not None:
+        legacy_dev.email = DEV_EMAIL
+        dev = legacy_dev
+        changed = True
+    if dev is None:
+        dev = User(
+            email=DEV_EMAIL,
+            display_name="Point Dev",
+            password_hash=hash_password(DEV_PASSWORD),
+            role="admin",
+            account_type="organizer",
+            email_verified=True,
+        )
+        session.add(dev)
+        await session.commit()
+        print(f"Seed: {DEV_EMAIL} created (admin, password {DEV_PASSWORD}).")
+        return
     if not dev.password_hash:
-        dev.password_hash = hash_password("dev12345")
+        dev.password_hash = hash_password(DEV_PASSWORD)
         changed = True
     if dev.role != "admin":
         dev.role = "admin"
@@ -60,7 +80,7 @@ async def _ensure_dev_admin(session) -> None:
         changed = True
     if changed:
         await session.commit()
-        print("Seed: dev@point.local updated (admin, password dev12345).")
+        print(f"Seed: {DEV_EMAIL} updated (admin, password {DEV_PASSWORD}).")
 
 
 async def main() -> None:
@@ -76,19 +96,21 @@ async def main() -> None:
             await _ensure_dev_admin(session)
             return
 
-        dev_user = User(
-            email="dev@point.local",
-            display_name="Point Dev",
-            password_hash=hash_password("dev12345"),
-            role="admin",
-            account_type="organizer",
-            email_verified=True,
-        )
-        session.add(dev_user)
-        await session.flush()
+        dev_user = await session.scalar(select(User).where(User.email == DEV_EMAIL))
+        if dev_user is None:
+            dev_user = User(
+                email=DEV_EMAIL,
+                display_name="Point Dev",
+                password_hash=hash_password(DEV_PASSWORD),
+                role="admin",
+                account_type="organizer",
+                email_verified=True,
+            )
+            session.add(dev_user)
+            await session.flush()
 
-        has_categories = await session.scalar(select(Category.id).limit(1)) is not None
-        if not has_categories:
+        category_count = await session.scalar(select(func.count()).select_from(Category)) or 0
+        if category_count == 0:
             for row in CATEGORY_SEEDS:
                 session.add(Category(id=int(row["id"]), name=str(row["name"])))
             await session.flush()
@@ -119,6 +141,8 @@ async def main() -> None:
                 participants_count=p_count,
                 is_for_children=bool(raw.get("is_for_children", False)),
                 age_rating_min=int(raw.get("age_rating_min", 0 if raw.get("is_for_children") else 12)),
+                status="published",
+                requires_registration=True,
             )
             ev.categories.append(cats[cat_id])
             session.add(ev)
@@ -127,4 +151,4 @@ async def main() -> None:
         await session.execute(text("SELECT setval(pg_get_serial_sequence('events', 'id'), (SELECT COALESCE(MAX(id), 1) FROM events))"))
 
         await session.commit()
-        print(f"Seed OK: dev@point.local, {len(CATEGORY_SEEDS)} categories, {len(EVENT_SEEDS)} events.")
+        print(f"Seed OK: {DEV_EMAIL}, {len(CATEGORY_SEEDS)} categories, {len(EVENT_SEEDS)} events.")
