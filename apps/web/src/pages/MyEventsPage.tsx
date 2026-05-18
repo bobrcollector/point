@@ -1,16 +1,99 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { formatApiError } from '../lib/apiError'
-import { AgeRatingBadge } from '../components/AgeRatingBadge'
-import { readParticipatingIds } from '../lib/eventInteractionStorage'
-import { useStoredEventCards } from '../features/catalog/queries'
+import { EventListCard, type EventListCardData } from '../components/EventListCard'
+import { IconPlusSquare } from '../components/NavGlyphs'
+import { readCreatedEventIds, readParticipatingIds } from '../lib/eventInteractionStorage'
+import { useStoredEventCards, type StoredEventCard } from '../features/catalog/queries'
 import { useDeleteEvent, useMyOrganizerEvents, usePublishEvent } from '../features/organizer/queries'
 import type { OrganizerEventListItem } from '../features/organizer/types'
+
+export const MY_EVENTS_SUBNAV = [
+  { to: '/my/organized', label: 'Организую' },
+  { to: '/my/attending', label: 'Участвую' },
+  { to: '/create', label: 'Создать' },
+] as const
+
+type MyEventsRouteKey = 'organized' | 'attending'
+type MyEventsPeriod = 'active' | 'archive'
 
 function statusLabel(status: string) {
   if (status === 'published') return 'Опубликовано'
   if (status === 'cancelled') return 'Отменено'
   return 'Черновик'
+}
+
+function getRouteKey(pathname: string): MyEventsRouteKey {
+  return pathname.includes('/my/attending') ? 'attending' : 'organized'
+}
+
+function isPast(date: string) {
+  return new Date(date).getTime() < Date.now()
+}
+
+function splitStoredCards(cards: StoredEventCard[]) {
+  const upcoming: StoredEventCard[] = []
+  const past: StoredEventCard[] = []
+  for (const card of cards) {
+    if (isPast(card.date)) past.push(card)
+    else upcoming.push(card)
+  }
+  upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  past.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  return { upcoming, past }
+}
+
+function toEventListCard(card: StoredEventCard): EventListCardData {
+  return {
+    id: card.id,
+    title: card.title,
+    date: card.date,
+    place: card.place,
+    price: card.price,
+    coverUrl: card.coverUrl,
+    category: card.categories?.[0],
+    ageRatingMin: card.ageRatingMin,
+  }
+}
+
+function MyEventsTimeTabs({
+  period,
+  onPeriodChange,
+}: {
+  period: MyEventsPeriod
+  onPeriodChange: (p: MyEventsPeriod) => void
+}) {
+  return (
+    <nav className="myEventsSubnav" aria-label="Период событий">
+      <button
+        type="button"
+        className={period === 'active' ? 'myEventsSubnavLink active' : 'myEventsSubnavLink'}
+        aria-pressed={period === 'active'}
+        onClick={() => onPeriodChange('active')}
+      >
+        Активные
+      </button>
+      <button
+        type="button"
+        className={period === 'archive' ? 'myEventsSubnavLink active' : 'myEventsSubnavLink'}
+        aria-pressed={period === 'archive'}
+        onClick={() => onPeriodChange('archive')}
+      >
+        Архив
+      </button>
+    </nav>
+  )
+}
+
+function StoredCardsGrid({ cards }: { cards: StoredEventCard[] }) {
+  if (!cards.length) return null
+  return (
+    <div className="myEventsGrid">
+      {cards.map((card) => (
+        <EventListCard key={card.id} event={toEventListCard(card)} />
+      ))}
+    </div>
+  )
 }
 
 function OrganizerCard({ event, onDeleted }: { event: OrganizerEventListItem; onDeleted: () => void }) {
@@ -26,7 +109,7 @@ function OrganizerCard({ event, onDeleted }: { event: OrganizerEventListItem; on
     publish.mutate(event.event_id, {
       onSuccess: () => {
         onDeleted()
-        navigate(`/events/${event.event_id}`, { state: { from: '/my', label: '← Мои события' } })
+        navigate(`/events/${event.event_id}`, { state: { from: '/my/organized', label: '← Организую' } })
       },
       onError: (err) => setPublishError(formatApiError(err, 'Не удалось опубликовать'))
     })
@@ -101,44 +184,20 @@ function OrganizerCard({ event, onDeleted }: { event: OrganizerEventListItem; on
   )
 }
 
-function ParticipatingSection({ ids }: { ids: string[] }) {
-  const events = useStoredEventCards(ids)
-  if (!ids.length) return <p className="pageSub">Пока пусто.</p>
-  if (!events.length) return <p className="pageSub">Загрузка…</p>
-  return (
-    <div className="grid">
-      {events.map((e) => (
-        <Link key={e.id} to={`/events/${e.id}`} className="card cardAsLink" state={{ from: '/my', label: '← Мои события' }}>
-          <article className="cardInner">
-            <div
-              className="cardCover"
-              style={{ backgroundImage: e.coverUrl ? `url(${e.coverUrl})` : undefined, position: 'relative' }}
-            >
-              <div className="cardCoverOverlay" />
-              <div className="cardTop">
-                <div className="cardTopBadges">
-                  <div className="badge">{e.categories?.[0] ?? 'Событие'}</div>
-                  <AgeRatingBadge ageRatingMin={e.ageRatingMin} />
-                </div>
-              </div>
-            </div>
-            <div className="cardBody">
-              <div className="cardTitle">{e.title}</div>
-              <div className="cardMeta">
-                {new Date(e.date).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })} · {e.place}
-              </div>
-              <div className="cardPrice">{e.price === 0 ? 'Бесплатно' : `${e.price} ₽`}</div>
-            </div>
-          </article>
-        </Link>
-      ))}
-    </div>
-  )
-}
-
 export function MyEventsPage() {
+  const location = useLocation()
+  const routeKey = getRouteKey(location.pathname)
   const organizerQuery = useMyOrganizerEvents()
-  const participating = readParticipatingIds()
+  const [periods, setPeriods] = useState<Record<MyEventsRouteKey, MyEventsPeriod>>({
+    organized: 'active',
+    attending: 'active',
+  })
+  const period = periods[routeKey]
+  const setPeriod = (next: MyEventsPeriod) => setPeriods((current) => ({ ...current, [routeKey]: next }))
+  const createdCards = useStoredEventCards(readCreatedEventIds())
+  const participatingCards = useStoredEventCards(readParticipatingIds())
+  const createdSplit = splitStoredCards(createdCards)
+  const participatingSplit = splitStoredCards(participatingCards)
 
   const { drafts, upcoming, past } = useMemo(() => {
     const items = organizerQuery.data ?? []
@@ -157,84 +216,98 @@ export function MyEventsPage() {
     return { drafts: dr, upcoming: up, past: pa }
   }, [organizerQuery.data])
 
+  const shownOrganizerEvents = period === 'active' ? upcoming : past
+  const shownCreatedCards = period === 'active' ? createdSplit.upcoming : createdSplit.past
+  const shownParticipatingCards = period === 'active' ? participatingSplit.upcoming : participatingSplit.past
+  const pageTitle = routeKey === 'organized' ? 'Организую' : 'Участвую'
+
   return (
     <div className="page myEventsPage">
-      <div className="pageHeader myEventsHeader">
-        <div>
-          <div className="pageTitle">Мои события</div>
-          <div className="pageSub">Организованные, предстоящие и прошедшие</div>
-        </div>
-        <Link to="/create" className="homePrimaryBtn" style={{ display: 'inline-flex' }}>
-          + Создать
-        </Link>
+      <header className="myEventsHeader">
+        <h1 className="myEventsTitle">{pageTitle}</h1>
+      </header>
+
+      <div className="myEventsToolbar myEventsToolbarCompact">
+        <MyEventsTimeTabs period={period} onPeriodChange={setPeriod} />
+        {routeKey === 'organized' ? (
+          <Link className="myEventsCreateFab" to="/create" title="Создать событие" aria-label="Создать событие">
+            <IconPlusSquare />
+          </Link>
+        ) : null}
       </div>
 
-      {organizerQuery.isError ? (
-        <div className="eventDetailPanel" style={{ marginBottom: 16 }}>
-          <p className="eventWizardError" role="alert">
-            {formatApiError(organizerQuery.error, 'Не удалось загрузить ваши события')}
-          </p>
-          <button type="button" className="eventDetailBtn" onClick={() => void organizerQuery.refetch()}>
-            Повторить
-          </button>
-        </div>
-      ) : null}
+      {routeKey === 'organized' ? (
+        <>
+          {organizerQuery.isError ? (
+            <div className="eventDetailPanel" style={{ marginBottom: 16 }}>
+              <p className="eventWizardError" role="alert">
+                {formatApiError(organizerQuery.error, 'Не удалось загрузить ваши события')}
+              </p>
+              <button type="button" className="eventDetailBtn" onClick={() => void organizerQuery.refetch()}>
+                Повторить
+              </button>
+            </div>
+          ) : null}
 
-      <section className="myEventsSection">
-        <h2 className="pageTitle" style={{ fontSize: 18 }}>
-          Черновики
-        </h2>
-        {organizerQuery.isLoading ? (
-          <p className="pageSub">Загрузка…</p>
-        ) : drafts.length === 0 ? (
-          <p className="pageSub">Нет черновиков.</p>
-        ) : (
-          <div className="myEventsGrid">
-            {drafts.map((e) => (
-              <OrganizerCard key={e.event_id} event={e} onDeleted={() => organizerQuery.refetch()} />
-            ))}
-          </div>
-        )}
-      </section>
+          {period === 'active' ? (
+            <section className="myEventsSection">
+              <h2 className="myEventsSectionTitle">Черновики</h2>
+              {organizerQuery.isLoading ? (
+                <p className="pageSub">Загрузка…</p>
+              ) : drafts.length === 0 ? (
+                <p className="pageSub">Нет черновиков.</p>
+              ) : (
+                <div className="myEventsGrid">
+                  {drafts.map((e) => (
+                    <OrganizerCard key={e.event_id} event={e} onDeleted={() => organizerQuery.refetch()} />
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : null}
 
-      <section className="myEventsSection">
-        <h2 className="pageTitle" style={{ fontSize: 18 }}>
-          Организую · предстоящие
-        </h2>
-        {organizerQuery.isLoading ? (
-          <p className="pageSub">Загрузка…</p>
-        ) : upcoming.length === 0 ? (
-          <p className="myEventsEmpty">Нет предстоящих событий. <Link to="/create">Создать</Link></p>
-        ) : (
-          <div className="myEventsGrid">
-            {upcoming.map((e) => (
-              <OrganizerCard key={e.event_id} event={e} onDeleted={() => organizerQuery.refetch()} />
-            ))}
-          </div>
-        )}
-      </section>
+          <section className="myEventsSection">
+            <h2 className="myEventsSectionTitle">{period === 'active' ? 'Активные события' : 'Архив'}</h2>
+            {organizerQuery.isLoading ? <p className="pageSub">Загрузка…</p> : null}
+            {shownOrganizerEvents.length ? (
+              <div className="myEventsGrid">
+                {shownOrganizerEvents.map((e) => (
+                  <OrganizerCard key={e.event_id} event={e} onDeleted={() => organizerQuery.refetch()} />
+                ))}
+              </div>
+            ) : null}
+            <StoredCardsGrid cards={shownCreatedCards} />
+            {!organizerQuery.isLoading && !shownOrganizerEvents.length && !shownCreatedCards.length ? (
+              <p className="myEventsEmpty">
+                {period === 'active' ? (
+                  <>
+                    Нет предстоящих событий, которые вы организуете. <Link to="/create">Создать</Link>
+                  </>
+                ) : (
+                  'В архиве пока нет прошедших организованных событий.'
+                )}
+              </p>
+            ) : null}
+          </section>
+        </>
+      ) : (
+        <section className="myEventsSection">
+          <h2 className="myEventsSectionTitle">{period === 'active' ? 'Активные события' : 'Архив'}</h2>
+          {shownParticipatingCards.length ? (
+            <StoredCardsGrid cards={shownParticipatingCards} />
+          ) : (
+            <p className="myEventsEmpty">
+              {period === 'active'
+                ? 'Нет предстоящих событий с отметкой «Пойду».'
+                : 'В архиве пока нет посещённых событий.'}
+            </p>
+          )}
+        </section>
+      )}
 
-      <section className="myEventsSection">
-        <h2 className="pageTitle" style={{ fontSize: 18 }}>
-          Организую · прошедшие
-        </h2>
-        {past.length === 0 ? (
-          <p className="pageSub">Пока нет прошедших.</p>
-        ) : (
-          <div className="myEventsGrid">
-            {past.map((e) => (
-              <OrganizerCard key={e.event_id} event={e} onDeleted={() => organizerQuery.refetch()} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="myEventsSection">
-        <h2 className="pageTitle" style={{ fontSize: 18 }}>
-          Участвую
-        </h2>
-        <ParticipatingSection ids={participating} />
-      </section>
+      <Link className="eventDetailBack myEventsBackLink" to="/">
+        ← Вернуться в ленту
+      </Link>
     </div>
   )
 }

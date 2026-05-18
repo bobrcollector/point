@@ -23,7 +23,7 @@ import { ensureDemoUser } from './lib/userSession'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { HomePage } from './pages/HomePage'
-import { MyEventsPage } from './pages/MyEventsPage'
+import { MyEventsPage, MY_EVENTS_SUBNAV } from './pages/MyEventsPage'
 import { CreateEventPage } from './pages/CreateEventPage'
 import { EditEventPage } from './pages/EditEventPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
@@ -57,10 +57,18 @@ type NavGroup = {
   items: NavDef[]
 }
 
-const MY_EVENTS_NAV: NavDef[] = [
-  { to: '/my', title: 'Мои события', label: 'Мои события', Icon: IconCalendar },
-  { to: '/create', title: 'Создать событие', label: 'Создать', Icon: IconPlusSquare },
-]
+const MY_EVENTS_NAV_ICONS: Record<string, NavGlyph> = {
+  '/my/organized': IconCalendar,
+  '/my/attending': IconUser,
+  '/create': IconPlusSquare,
+}
+
+const MY_EVENTS_NAV: NavDef[] = MY_EVENTS_SUBNAV.map((item) => ({
+  to: item.to,
+  title: item.label,
+  label: item.label,
+  Icon: MY_EVENTS_NAV_ICONS[item.to] ?? IconCalendar,
+}))
 
 const MENU_ITEMS: NavDef[] = [
   { to: '/', end: true, title: 'Лента и поиск', label: 'Лента', Icon: IconFeed },
