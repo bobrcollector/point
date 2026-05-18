@@ -844,8 +844,11 @@ export function HomePage() {
               <Link className="footerLink" to="/favorites">
                 Избранное
               </Link>
-              <Link className="footerLink" to="/archive">
-                Архив
+              <Link className="footerLink" to="/my/organized">
+                Организую
+              </Link>
+              <Link className="footerLink" to="/my/attending">
+                Участвую
               </Link>
             </div>
             <div className="footerCol">

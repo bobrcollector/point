@@ -4,6 +4,9 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { AgeRatingBadge } from '../components/AgeRatingBadge'
 import { EventDetailGallery } from '../components/EventDetailGallery'
 import { OrganizerChatPanel } from '../components/OrganizerChatPanel'
+import { PointDropdown } from '../components/PointDropdown'
+import { IconFlag, IconLink, IconMessage, IconTelegram, IconVk, IconWhatsApp } from '../components/ShareGlyphs'
+import { IconHeart } from '../components/NavGlyphs'
 import { useResolvedEventDetail } from '../features/catalog/useResolvedEventDetail'
 import {
   addReport,
@@ -15,10 +18,25 @@ import {
   toggleParticipating,
   type StoredReview
 } from '../lib/eventInteractionStorage'
+import { isEventPast } from '../lib/eventDatetime'
 import { getEventDetailBack } from '../lib/eventDetailBack'
 import { getDemoUser } from '../lib/userSession'
 
 type ReviewSort = 'newest' | 'oldest' | 'rating_desc' | 'rating_asc'
+
+const REVIEW_SORT_OPTIONS: { value: ReviewSort; label: string }[] = [
+  { value: 'newest', label: 'Сначала новые' },
+  { value: 'oldest', label: 'Сначала старые' },
+  { value: 'rating_desc', label: 'Высокая оценка' },
+  { value: 'rating_asc', label: 'Низкая оценка' },
+]
+
+const REPORT_REASON_OPTIONS = [
+  { value: 'spam', label: 'Спам / реклама' },
+  { value: 'misleading', label: 'Вводит в заблуждение' },
+  { value: 'unsafe', label: 'Небезопасно' },
+  { value: 'other', label: 'Другое' },
+] as const
 
 function buildMapsUrl(lat: number, lon: number) {
   return `https://yandex.ru/maps/?pt=${lon},${lat}&z=16&l=map`
@@ -99,7 +117,9 @@ export function EventDetailPage() {
     ? !q.isLoading && !d
     : isAxiosError(q.error) && q.error.response?.status === 404
 
-  const canReview = going
+  const eventEnded = d ? isEventPast(d.event_datetime) : false
+  const attended = going && eventEnded
+  const canReview = attended
 
   const shareUrl = useMemo(() => (eventId ? eventShareUrl(eventId) : ''), [eventId])
 
@@ -177,7 +197,10 @@ export function EventDetailPage() {
   if (!d) {
     return (
       <div className="page eventDetailPage">
-        <p className="eventDetailMuted">Загружаем событие…</p>
+        <Link className="eventDetailBack" to={back.to}>
+          {back.label}
+        </Link>
+        <p className="eventDetailMuted">{q.isFetching ? 'Загружаем событие…' : 'Данные события недоступны.'}</p>
       </div>
     )
   }
@@ -256,26 +279,62 @@ export function EventDetailPage() {
       </div>
 
       <section className="eventDetailActionsBar" aria-label="Действия">
-        <button
-          type="button"
-          className={going ? 'eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive' : 'eventDetailBtn eventDetailBtnToggle'}
-          onClick={onToggleGoing}
-        >
-          {going ? 'Вы идёте' : 'Пойду'}
-        </button>
-        <button
-          type="button"
-          className={fav ? 'eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive' : 'eventDetailBtn eventDetailBtnToggle'}
-          onClick={onToggleFav}
-        >
-          {fav ? 'В избранном' : 'В избранное'}
-        </button>
-        <button type="button" className="eventDetailBtn" onClick={() => setChatOpen(true)}>
-          Написать организатору
-        </button>
-        <button type="button" className="eventDetailBtn eventDetailBtnDanger" onClick={() => setReportOpen(true)}>
-          Пожаловаться
-        </button>
+        <div className="eventDetailActionsPrimary">
+          {attended ? (
+            <button
+              type="button"
+              className="eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive eventDetailBtnToggleLocked"
+              disabled
+              aria-pressed="true"
+            >
+              Был(а) там
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={going ? 'eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive' : 'eventDetailBtn eventDetailBtnToggle'}
+              onClick={onToggleGoing}
+              disabled={eventEnded}
+              title={eventEnded ? 'Нельзя отметить участие в прошедшем событии' : undefined}
+            >
+              {eventEnded ? 'Мероприятие прошло' : going ? 'Вы идёте' : 'Пойду'}
+            </button>
+          )}
+          <button
+            type="button"
+            className={
+              fav
+                ? 'eventDetailBtnIcon eventDetailBtnFav active'
+                : 'eventDetailBtnIcon eventDetailBtnFav'
+            }
+            onClick={onToggleFav}
+            aria-label={fav ? 'Убрать из избранного' : 'В избранное'}
+            aria-pressed={fav}
+            title={fav ? 'В избранном' : 'В избранное'}
+          >
+            <IconHeart />
+          </button>
+        </div>
+        <div className="eventDetailActionsSecondary">
+          <button
+            type="button"
+            className="eventDetailBtn eventDetailBtnGhost"
+            onClick={() => setChatOpen(true)}
+            title="Написать организатору"
+          >
+            <IconMessage />
+            <span className="eventDetailBtnGhostLabel">Написать</span>
+          </button>
+          <button
+            type="button"
+            className="eventDetailBtn eventDetailBtnGhost eventDetailBtnGhostDanger"
+            onClick={() => setReportOpen(true)}
+            title="Пожаловаться"
+          >
+            <IconFlag />
+            <span className="eventDetailBtnGhostLabel">Жалоба</span>
+          </button>
+        </div>
         {reportDone ? <span className="eventDetailMuted eventDetailActionsHint">Жалоба отправлена</span> : null}
       </section>
 
@@ -324,26 +383,49 @@ export function EventDetailPage() {
           </button>
         </section>
 
-        <section className="eventDetailPanel eventDetailGridShare" aria-labelledby="event-share">
+        <section className="eventDetailPanel eventDetailPanelCompact eventDetailGridShare" aria-labelledby="event-share">
           <h2 id="event-share" className="eventDetailPanelTitle">
             Поделиться
           </h2>
           <div className="eventDetailShareRow">
             <button
               type="button"
-              className={copyDone ? 'eventDetailBtn eventDetailCopyBtn isCopied' : 'eventDetailBtn eventDetailCopyBtn'}
+              className={copyDone ? 'eventDetailShareBtn isCopied' : 'eventDetailShareBtn'}
               onClick={onCopyLink}
+              aria-label={copyDone ? 'Ссылка скопирована' : 'Скопировать ссылку'}
+              title={copyDone ? 'Скопировано' : 'Скопировать ссылку'}
             >
-              {copyDone ? 'Скопировано' : 'Скопировать ссылку'}
+              <IconLink />
             </button>
-            <a className="eventDetailBtn" href={vkShare} target="_blank" rel="noreferrer">
-              VK
+            <a
+              className="eventDetailShareBtn eventDetailShareBtnVk"
+              href={vkShare}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Поделиться ВКонтакте"
+              title="ВКонтакте"
+            >
+              <IconVk />
             </a>
-            <a className="eventDetailBtn" href={tgShare} target="_blank" rel="noreferrer">
-              Telegram
+            <a
+              className="eventDetailShareBtn eventDetailShareBtnTg"
+              href={tgShare}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Поделиться в Telegram"
+              title="Telegram"
+            >
+              <IconTelegram />
             </a>
-            <a className="eventDetailBtn" href={waShare} target="_blank" rel="noreferrer">
-              WhatsApp
+            <a
+              className="eventDetailShareBtn eventDetailShareBtnWa"
+              href={waShare}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Поделиться в WhatsApp"
+              title="WhatsApp"
+            >
+              <IconWhatsApp />
             </a>
           </div>
         </section>
@@ -354,20 +436,16 @@ export function EventDetailPage() {
               Отзывы
             </h2>
             {reviews.length > 0 ? (
-              <label className="eventDetailReviewsSort">
-                <span className="sr-only">Сортировка отзывов</span>
-                <select
-                  className="select eventDetailReviewsSelect"
+              <div className="eventDetailReviewsSort">
+                <PointDropdown
+                  variant="light"
+                  className="eventDetailReviewsDropdown"
+                  ariaLabel="Сортировка отзывов"
+                  options={REVIEW_SORT_OPTIONS}
                   value={reviewSort}
-                  onChange={(e) => setReviewSort(e.target.value as ReviewSort)}
-                  aria-label="Сортировка отзывов"
-                >
-                  <option value="newest">Сначала новые</option>
-                  <option value="oldest">Сначала старые</option>
-                  <option value="rating_desc">Высокая оценка</option>
-                  <option value="rating_asc">Низкая оценка</option>
-                </select>
-              </label>
+                  onChange={setReviewSort}
+                />
+              </div>
             ) : null}
           </div>
 
@@ -411,12 +489,23 @@ export function EventDetailPage() {
                     onChange={(e) => setReviewText(e.target.value)}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} type="button" className={reviewRating === n ? 'pill active' : 'pill'} onClick={() => setReviewRating(n)}>
-                      {n}
-                    </button>
-                  ))}
+                <div style={{ marginBottom: 10 }}>
+                  <p className="eventDetailMuted" style={{ margin: '0 0 8px' }}>
+                    Оценка: выберите число от 1 (низкая) до 5 (отлично)
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        className={reviewRating === n ? 'pill active' : 'pill'}
+                        onClick={() => setReviewRating(n)}
+                        aria-label={`Оценка ${n} из 5`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                   <div className="eventDetailReviewFormActions">
                     <button type="button" className="eventDetailBtn" onClick={() => setReviewFormOpen(false)}>
@@ -431,7 +520,11 @@ export function EventDetailPage() {
             </>
           ) : (
             <p className="eventDetailMuted" style={{ marginTop: 10 }}>
-              Отзывы можно оставить после посещения мероприятия — отметьте «Пойду» и приходите на событие.
+              {attended
+                ? null
+                : going
+                  ? 'Отзыв можно оставить после мероприятия — когда дата события наступит и вы его посетите.'
+                  : 'Отзывы доступны после посещения: отметьте «Пойду» и приходите на событие.'}
             </p>
           )}
         </section>
@@ -456,16 +549,15 @@ export function EventDetailPage() {
               </button>
             </div>
             <form onSubmit={onSubmitReport}>
-              <div className="searchGroup" style={{ marginBottom: 10 }}>
-                <label className="label" htmlFor="report-reason">
-                  Причина
-                </label>
-                <select id="report-reason" className="select" value={reportReason} onChange={(e) => setReportReason(e.target.value)}>
-                  <option value="spam">Спам / реклама</option>
-                  <option value="misleading">Вводит в заблуждение</option>
-                  <option value="unsafe">Небезопасно</option>
-                  <option value="other">Другое</option>
-                </select>
+              <div className="searchGroup eventDetailDropdownGroup" style={{ marginBottom: 10 }}>
+                <span className="label">Причина</span>
+                <PointDropdown
+                  variant="light"
+                  ariaLabel="Причина жалобы"
+                  options={[...REPORT_REASON_OPTIONS]}
+                  value={reportReason}
+                  onChange={setReportReason}
+                />
               </div>
               <div className="searchGroup" style={{ marginBottom: 12 }}>
                 <label className="label" htmlFor="report-details">

@@ -3,7 +3,6 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import {
-  IconArchive,
   IconCalendar,
   IconChevronRight,
   IconFeed,
@@ -24,7 +23,12 @@ import { ensureDemoUser, getDemoUser } from './lib/userSession'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { HomePage } from './pages/HomePage'
-import { MyEventsPage } from './pages/MyEventsPage'
+import {
+  MyAttendingEventsRoute,
+  MyEventsLayout,
+  MyOrganizedEventsRoute,
+  MY_EVENTS_SUBNAV,
+} from './pages/MyEventsPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { useCityStore } from './stores/cityStore'
 
@@ -39,13 +43,30 @@ type NavDef = {
   variant?: 'default' | 'cta'
 }
 
+type NavGroup = {
+  title: string
+  items: NavDef[]
+}
+
+const MY_EVENTS_NAV_ICONS: Record<string, NavGlyph> = {
+  '/my/organized': IconCalendar,
+  '/my/attending': IconUser,
+  '/create': IconPlusSquare,
+}
+
+const MY_EVENTS_NAV: NavDef[] = MY_EVENTS_SUBNAV.map((item) => ({
+  to: item.to,
+  title: item.to === '/create' ? 'Создать событие' : item.label,
+  label: item.label,
+  Icon: MY_EVENTS_NAV_ICONS[item.to] ?? IconCalendar,
+}))
+
 const MENU_ITEMS: NavDef[] = [
   { to: '/', end: true, title: 'Лента и поиск', label: 'Лента', Icon: IconFeed },
-  { to: '/my', title: 'Мои события', label: 'Мои события', Icon: IconCalendar },
-  { to: '/create', title: 'Создать', label: 'Создать', Icon: IconPlusSquare },
   { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart },
-  { to: '/archive', title: 'Архив', label: 'Архив', Icon: IconArchive },
 ]
+
+const MENU_GROUPS: NavGroup[] = [{ title: 'Мои события', items: MY_EVENTS_NAV }]
 
 const SERVICE_ITEMS: NavDef[] = [{ to: '/admin', title: 'Админ-панель', label: 'Админ', Icon: IconShield }]
 
@@ -56,10 +77,8 @@ const FOOTER_NAV: NavDef[] = [
 
 /** Разделы вне табов «Лента» и «Профиль» — в нижнем листе на телефоне */
 const MOBILE_SHEET_LINKS: NavDef[] = [
-  { to: '/create', title: 'Создать событие', label: 'Создать', Icon: IconPlusSquare },
-  { to: '/my', title: 'Мои события', label: 'Мои события', Icon: IconCalendar },
+  ...MY_EVENTS_NAV,
   { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart },
-  { to: '/archive', title: 'Архив', label: 'Архив', Icon: IconArchive },
   { to: '/admin', title: 'Админ-панель', label: 'Админ-панель', Icon: IconShield },
   { to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSettings },
   { to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' },
@@ -242,6 +261,20 @@ export default function App() {
               </NavLink>
             ))}
 
+            {MENU_GROUPS.map((group) => (
+              <div key={group.title} className="navSubmenu">
+                <div className="navGroupTitle">{group.title}</div>
+                {group.items.map((item) => (
+                  <NavLink key={item.to} to={item.to} className={navLinkClass(item)} title={item.title}>
+                    <span className="navIcon" aria-hidden>
+                      <item.Icon />
+                    </span>
+                    <span className="navItemLabel">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            ))}
+
             <div className="navSpacer" />
 
             <div className="navGroupTitle">Сервис</div>
@@ -294,10 +327,14 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/events/:eventId" element={<EventDetailRoute />} />
           <Route path="/search" element={<Navigate to="/#home-search" replace />} />
-          <Route path="/my" element={<MyEventsPage />} />
+          <Route path="/my" element={<MyEventsLayout />}>
+            <Route index element={<Navigate to="organized" replace />} />
+            <Route path="organized" element={<MyOrganizedEventsRoute />} />
+            <Route path="attending" element={<MyAttendingEventsRoute />} />
+          </Route>
+          <Route path="/archive" element={<Navigate to="/my/attending" replace />} />
           <Route path="/create" element={<PlaceholderPage title="Создать событие" />} />
           <Route path="/favorites" element={<FavoritesPage />} />
-          <Route path="/archive" element={<PlaceholderPage title="Архив" />} />
           <Route path="/account" element={<PlaceholderPage title="Аккаунт" />} />
           <Route path="/settings" element={<PlaceholderPage title="Настройки" />} />
           <Route path="/admin" element={<PlaceholderPage title="Админ-панель" />} />

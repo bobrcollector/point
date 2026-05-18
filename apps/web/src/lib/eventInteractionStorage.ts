@@ -203,6 +203,7 @@ export function ensureDemoUserEventData(testEventId: string) {
   addCreatedEventId(testEventId)
   const part = new Set(readParticipatingIds())
   part.add('102')
+  part.add(testEventId)
   setParticipatingIds([...part])
   const fav = new Set(readFavoriteIds())
   fav.add('104')
