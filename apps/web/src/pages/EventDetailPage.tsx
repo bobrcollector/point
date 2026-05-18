@@ -122,7 +122,7 @@ export function EventDetailPage() {
 
   const eventEnded = d ? isEventPast(d.event_datetime) : false
   const attended = going && eventEnded
-  const canReview = attended
+  const canReview = isAuthed && attended
 
   const shareUrl = useMemo(() => (eventId ? eventShareUrl(eventId) : ''), [eventId])
 
@@ -242,6 +242,7 @@ export function EventDetailPage() {
 
   const onSubmitReview = (e: FormEvent) => {
     e.preventDefault()
+    if (!requireAuth()) return
     const text = reviewText.trim()
     if (!text) return
     addReview(eventId, { author: reviewAuthor.trim() || user.displayName, text, rating: reviewRating })
@@ -330,7 +331,9 @@ export function EventDetailPage() {
           <button
             type="button"
             className="eventDetailBtn eventDetailBtnGhost"
-            onClick={() => setChatOpen(true)}
+            onClick={() => {
+              if (requireAuth()) setChatOpen(true)
+            }}
             title="Написать организатору"
           >
             <IconMessage />
@@ -409,7 +412,14 @@ export function EventDetailPage() {
             {d.organizer_name}
           </p>
           <p className="eventDetailMuted">Участников: {d.participants_count}</p>
-          <button type="button" className="eventDetailBtn" style={{ marginTop: 10 }} onClick={() => setChatOpen(true)}>
+          <button
+            type="button"
+            className="eventDetailBtn"
+            style={{ marginTop: 10 }}
+            onClick={() => {
+              if (requireAuth()) setChatOpen(true)
+            }}
+          >
             Чат с организатором
           </button>
         </section>
@@ -502,7 +512,9 @@ export function EventDetailPage() {
                   type="button"
                   className="homePrimaryBtn eventDetailReviewCta"
                   style={{ display: 'inline-flex', marginTop: 12 }}
-                  onClick={() => setReviewFormOpen(true)}
+                  onClick={() => {
+                    if (requireAuth()) setReviewFormOpen(true)
+                  }}
                 >
                   Оставить отзыв
                 </button>
@@ -551,8 +563,10 @@ export function EventDetailPage() {
             </>
           ) : (
             <p className="eventDetailMuted" style={{ marginTop: 10 }}>
-              {attended
-                ? null
+              {!isAuthed
+                ? 'Войдите, чтобы присоединиться к событию и оставить отзыв после посещения.'
+                : attended
+                  ? null
                 : going
                   ? 'Отзыв можно оставить после мероприятия — когда дата события наступит и вы его посетите.'
                   : 'Отзывы доступны после посещения: отметьте «Пойду» и приходите на событие.'}

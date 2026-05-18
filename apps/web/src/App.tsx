@@ -84,15 +84,6 @@ const FOOTER_NAV: NavDef[] = [
   { to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' },
 ]
 
-/** Разделы вне табов «Лента» и «Профиль» — в нижнем листе на телефоне */
-const MOBILE_SHEET_LINKS: NavDef[] = [
-  ...MY_EVENTS_NAV,
-  { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart },
-  { to: '/admin', title: 'Админ-панель', label: 'Админ-панель', Icon: IconShield },
-  { to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSettings },
-  { to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' },
-]
-
 const PROFILE_PATHS = new Set(['/account', '/settings', '/login'])
 
 function EventDetailRoute() {
@@ -111,11 +102,18 @@ function navLinkClass(item: NavDef) {
   }
 }
 
-function MobileBottomNav() {
+function MobileBottomNav({ isAuthed, showAdmin }: { isAuthed: boolean; showAdmin: boolean }) {
   const location = useLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const sheetTitleId = useId()
+  const sheetLinks = [
+    ...(isAuthed ? MY_EVENTS_NAV : []),
+    ...(isAuthed ? [{ to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart }] : []),
+    ...(showAdmin ? [{ to: '/admin', title: 'Админ-панель', label: 'Админ-панель', Icon: IconShield }] : []),
+    ...(isAuthed ? [{ to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSettings }] : []),
+    ...(isAuthed ? [] : [{ to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' as const }]),
+  ]
 
   const closeSheet = useCallback(() => setSheetOpen(false), [])
 
@@ -177,14 +175,14 @@ function MobileBottomNav() {
           </NavLink>
 
           <NavLink
-            to="/account"
+            to={isAuthed ? '/account' : '/login'}
             className={() => (profileActive ? 'mobileTabItem active' : 'mobileTabItem')}
-            title="Аккаунт"
+            title={isAuthed ? 'Аккаунт' : 'Вход'}
           >
             <span className="mobileTabIcon" aria-hidden>
               <IconUser />
             </span>
-            <span className="mobileTabLabel">Профиль</span>
+            <span className="mobileTabLabel">{isAuthed ? 'Профиль' : 'Вход'}</span>
           </NavLink>
         </div>
       </nav>
@@ -213,7 +211,7 @@ function MobileBottomNav() {
           </button>
         </div>
         <nav className="mobileSheetNav" aria-label="Все разделы">
-          {MOBILE_SHEET_LINKS.map((item) => (
+          {sheetLinks.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -275,7 +273,7 @@ export default function App() {
         <div className="sidebarBody">
           <nav className="nav navPrimary" aria-label="Основные разделы">
             <div className="navGroupTitle">Меню</div>
-            {MENU_ITEMS.map((item) => (
+            {MENU_ITEMS.filter((item) => isAuthed || item.to !== '/favorites').map((item) => (
               <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClass(item)} title={item.title}>
                 <span className="navIcon" aria-hidden>
                   <item.Icon />
@@ -284,7 +282,7 @@ export default function App() {
               </NavLink>
             ))}
 
-            {MENU_GROUPS.map((group) => (
+            {isAuthed ? MENU_GROUPS.map((group) => (
               <div key={group.title} className="navSubmenu">
                 <div className="navGroupTitle">{group.title}</div>
                 {group.items.map((item) => (
@@ -296,7 +294,7 @@ export default function App() {
                   </NavLink>
                 ))}
               </div>
-            ))}
+            )) : null}
 
             <div className="navSpacer" />
 
@@ -401,8 +399,22 @@ export default function App() {
               </RequireAuth>
             }
           />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="/account"
+            element={
+              <RequireAuth>
+                <AccountPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <SettingsPage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/admin"
             element={
@@ -421,7 +433,7 @@ export default function App() {
         </Routes>
       </main>
 
-      <MobileBottomNav />
+      <MobileBottomNav isAuthed={isAuthed} showAdmin={showAdmin} />
     </div>
   )
 }
