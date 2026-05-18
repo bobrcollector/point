@@ -11,6 +11,9 @@ dist/
 .env.*
 !.env.example
 
+# Uploads
+services/api/uploads/
+
 # Python
 .venv/
 venv/

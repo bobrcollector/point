@@ -4,6 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import select, text
 
+from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models import Category, Event, User
 from app.seed.data import CATEGORY_SEEDS, EVENT_SEEDS
@@ -40,6 +41,28 @@ async def _backfill_covers(session) -> int:
     return len(events)
 
 
+async def _ensure_dev_admin(session) -> None:
+    dev = await session.scalar(select(User).where(User.email == "dev@point.local"))
+    if dev is None:
+        return
+    changed = False
+    if not dev.password_hash:
+        dev.password_hash = hash_password("dev12345")
+        changed = True
+    if dev.role != "admin":
+        dev.role = "admin"
+        changed = True
+    if dev.account_type != "organizer":
+        dev.account_type = "organizer"
+        changed = True
+    if not dev.email_verified:
+        dev.email_verified = True
+        changed = True
+    if changed:
+        await session.commit()
+        print("Seed: dev@point.local updated (admin, password dev12345).")
+
+
 async def main() -> None:
     async with AsyncSessionLocal() as session:
         existing = await session.scalar(select(Event.id).where(Event.id == 101))
@@ -50,15 +73,25 @@ async def main() -> None:
                 print(f"Seed: backfilled cover_image_url for {updated} events.")
             else:
                 print("Seed skipped: demo data already present (event id=101).")
+            await _ensure_dev_admin(session)
             return
 
-        dev_user = User(email="dev@point.local", display_name="Point Dev", password_hash=None)
+        dev_user = User(
+            email="dev@point.local",
+            display_name="Point Dev",
+            password_hash=hash_password("dev12345"),
+            role="admin",
+            account_type="organizer",
+            email_verified=True,
+        )
         session.add(dev_user)
         await session.flush()
 
-        for row in CATEGORY_SEEDS:
-            session.add(Category(id=int(row["id"]), name=str(row["name"])))
-        await session.flush()
+        has_categories = await session.scalar(select(Category.id).limit(1)) is not None
+        if not has_categories:
+            for row in CATEGORY_SEEDS:
+                session.add(Category(id=int(row["id"]), name=str(row["name"])))
+            await session.flush()
 
         cats = {c.id: c for c in (await session.execute(select(Category))).scalars().all()}
 

@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useAuthStore } from '../stores/authStore'
 import { AgeRatingBadge } from '../components/AgeRatingBadge'
 import { EventDetailGallery } from '../components/EventDetailGallery'
 import { OrganizerChatPanel } from '../components/OrganizerChatPanel'
@@ -64,6 +65,8 @@ function sortReviews(list: StoredReview[], sort: ReviewSort): StoredReview[] {
 export function EventDetailPage() {
   const { eventId } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
+  const isAuthed = Boolean(useAuthStore((s) => s.token))
   const back = getEventDetailBack(location.state)
   const q = useResolvedEventDetail(eventId)
   const d = q.data
@@ -221,11 +224,19 @@ export function EventDetailPage() {
     }
   }
 
+  const requireAuth = () => {
+    if (isAuthed) return true
+    navigate('/login', { state: { from: `/events/${eventId}` } })
+    return false
+  }
+
   const onToggleFav = () => {
+    if (!eventId || !requireAuth()) return
     setFav(toggleFavorite(eventId))
   }
 
   const onToggleGoing = () => {
+    if (!eventId || !requireAuth()) return
     setGoing(toggleParticipating(eventId))
   }
 
@@ -328,7 +339,9 @@ export function EventDetailPage() {
           <button
             type="button"
             className="eventDetailBtn eventDetailBtnGhost eventDetailBtnGhostDanger"
-            onClick={() => setReportOpen(true)}
+            onClick={() => {
+              if (requireAuth()) setReportOpen(true)
+            }}
             title="Пожаловаться"
           >
             <IconFlag />
@@ -451,7 +464,7 @@ export function EventDetailPage() {
 
           {reviews.length > 0 ? (
             <div className="eventDetailReviewsList" key={`${reviewTick}-${reviewSort}`}>
-                {sortedReviews.map((r) => (
+              {sortedReviews.map((r) => (
                   <div key={r.id} className="eventDetailChatMsg">
                     <div className="eventDetailChatAuthor">
                       {r.author} · ★ {r.rating} · {new Date(r.at).toLocaleString('ru-RU')}
