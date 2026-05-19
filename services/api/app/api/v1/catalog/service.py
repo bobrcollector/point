@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.media import abs_media_url
 from app.models import Category, Event
 
 if TYPE_CHECKING:
@@ -88,7 +89,7 @@ def event_distance_m(ev: Event, lat: float, lon: float) -> int | None:
 async def load_all_events(session: AsyncSession) -> list[Event]:
     res = await session.execute(
         select(Event)
-        .where(Event.status == "published")
+        .where(Event.status == "approved", Event.is_hidden.is_(False))
         .options(selectinload(Event.categories))
         .order_by(Event.event_datetime)
     )
@@ -177,7 +178,7 @@ def event_to_item_dict(ev: Event, distance: int | None) -> dict[str, object]:
         "location": ev.location,
         "price": float(ev.price),
         "average_rating": float(ev.average_rating) if ev.average_rating is not None else None,
-        "cover_image_url": ev.cover_image_url,
+        "cover_image_url": abs_media_url(ev.cover_image_url),
         "latitude": float(ev.latitude) if ev.latitude is not None else None,
         "longitude": float(ev.longitude) if ev.longitude is not None else None,
         "distance": distance,
@@ -192,7 +193,7 @@ def event_to_detail_dict(ev: Event) -> dict[str, object]:
     g = ev.gallery_urls
     urls: list[str]
     if isinstance(g, list):
-        urls = [str(x) for x in g]
+        urls = [abs_media_url(str(x)) or str(x) for x in g]
     else:
         urls = []
     base.update(
@@ -200,7 +201,7 @@ def event_to_detail_dict(ev: Event) -> dict[str, object]:
             "description": ev.description,
             "address_detail": ev.address_detail,
             "organizer_name": ev.organizer_name,
-            "gallery_urls": urls,
+            "gallery_urls": [u for u in urls if u],
             "participants_count": int(ev.participants_count),
             "requires_registration": bool(ev.requires_registration),
             "ticket_types": [
@@ -220,7 +221,7 @@ def event_to_detail_dict(ev: Event) -> dict[str, object]:
 async def get_event_by_id(session: AsyncSession, event_id: int) -> Event | None:
     res = await session.execute(
         select(Event)
-        .where(Event.id == event_id, Event.status == "published")
+        .where(Event.id == event_id, Event.status == "approved", Event.is_hidden.is_(False))
         .options(selectinload(Event.categories), selectinload(Event.ticket_types))
     )
     return res.scalar_one_or_none()

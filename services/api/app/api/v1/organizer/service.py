@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.organizer.schemas import EventCreateIn, EventUpdateIn, TicketTypeIn
+from app.core.media import abs_media_url
 from app.models import Category, Event, EventTicketType, User
 
 
@@ -25,7 +26,7 @@ def _event_to_list_item(ev: Event) -> dict:
         "location": ev.location,
         "status": ev.status,
         "price": float(ev.price),
-        "cover_image_url": ev.cover_image_url,
+        "cover_image_url": abs_media_url(ev.cover_image_url),
         "categories": [{"id": c.id, "name": c.name} for c in ev.categories],
         "ticket_types_count": len(ev.ticket_types),
     }
@@ -42,8 +43,8 @@ def _event_to_detail(ev: Event) -> dict:
         "event_datetime": ev.event_datetime,
         "status": ev.status,
         "price": float(ev.price),
-        "cover_image_url": ev.cover_image_url,
-        "gallery_urls": [str(x) for x in g],
+        "cover_image_url": abs_media_url(ev.cover_image_url),
+        "gallery_urls": [u for u in (abs_media_url(str(x)) for x in g) if u],
         "latitude": float(ev.latitude) if ev.latitude is not None else None,
         "longitude": float(ev.longitude) if ev.longitude is not None else None,
         "is_for_children": bool(ev.is_for_children),
@@ -200,7 +201,7 @@ async def publish_event(session: AsyncSession, organizer_id: int, event_id: int)
         named = [t for t in ev.ticket_types if t.name.strip()]
         if not named:
             raise HTTPException(status_code=400, detail="Добавьте хотя бы один тип билета")
-    ev.status = "published"
+    ev.status = "pending"
     ev.updated_at = now
     await session.flush()
     return ev

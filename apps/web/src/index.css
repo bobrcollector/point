@@ -3913,3 +3913,26 @@ button.mapEventCardGhost {
 .myEventsPage .myEventsHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 @media (max-width: 640px) { .eventWizardTicketRow, .eventTimeRow, .profileTypePicker { grid-template-columns: 1fr; } }
 
+/* Admin dashboard & notifications */
+.adminTabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.adminTabPanel { display: flex; flex-direction: column; gap: 12px; }
+.adminMetricsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.adminMetricTile { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; }
+.adminMetricTileWarn .adminMetricValue { color: #b91c1c; }
+.adminMetricValue { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; }
+.adminMetricLabel { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.adminChartsRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.adminCardTitle { margin: 0 0 12px; font-size: 15px; font-weight: 800; }
+.adminChart { display: flex; align-items: flex-end; gap: 8px; min-height: 120px; padding-top: 8px; }
+.adminChartCol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100px; justify-content: flex-end; }
+.adminChartBar { width: 100%; max-width: 36px; background: linear-gradient(180deg, var(--primary), var(--primary-2)); border-radius: 6px 6px 2px 2px; min-height: 8px; }
+.adminChartLabel { font-size: 10px; color: var(--muted); }
+.adminModal { max-width: 420px; }
+.notifList { display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+.notifRow { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--panel); cursor: pointer; font: inherit; }
+.notifRowUnread { border-color: rgba(109, 40, 217, 0.35); background: rgba(109, 40, 217, 0.06); }
+.notifRowType { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary-2); }
+.notifRowBody { font-size: 14px; line-height: 1.45; }
+.notifRowTime { font-size: 12px; color: var(--muted); }
+.status-approved { background: rgba(16, 185, 129, 0.15); color: #047857; }
+

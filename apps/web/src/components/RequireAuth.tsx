@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/authStore'
 
 type Props = {
   children: React.ReactNode
-  roles?: Array<'user' | 'organizer' | 'moderator' | 'admin'>
+  roles?: Array<'user' | 'admin'>
 }
 
 export function RequireAuth({ children, roles }: Props) {

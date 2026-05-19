@@ -9,14 +9,6 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     display_name: str = Field(min_length=2, max_length=120)
-    account_type: Literal["viewer", "organizer"] = "viewer"
-    organizer_description: str | None = Field(default=None, min_length=20, max_length=4000)
-
-    @model_validator(mode="after")
-    def organizer_requires_description(self) -> "RegisterRequest":
-        if self.account_type == "organizer" and not (self.organizer_description or "").strip():
-            raise ValueError("organizer_description_required")
-        return self
 
 class LoginRequest(BaseModel):
     email: EmailStr

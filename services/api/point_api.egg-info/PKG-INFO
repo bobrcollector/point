@@ -9,12 +9,14 @@ Requires-Dist: pydantic>=2.7
 Requires-Dist: pydantic-settings>=2.3
 Requires-Dist: sqlalchemy>=2.0
 Requires-Dist: asyncpg>=0.29
+Requires-Dist: psycopg[binary]>=3.1
 Requires-Dist: alembic>=1.13
 Requires-Dist: python-jose[cryptography]>=3.3
 Requires-Dist: bcrypt>=4.0
 Requires-Dist: python-multipart>=0.0.9
 Requires-Dist: email-validator>=2.0
 Requires-Dist: Pillow>=10.0
+Requires-Dist: pywebpush>=2.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.0; extra == "dev"
 Requires-Dist: httpx; extra == "dev"

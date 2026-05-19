@@ -1,80 +1,45 @@
 # Point — онлайн-платформа событий
 
-Монорепозиторий для дипломного проекта: **PWA React** (каталог + интерактивная карта) и общий **FastAPI** бэкенд с **PostgreSQL + PostGIS**.
+Монорепозиторий: **React PWA** + **FastAPI** + **PostgreSQL/PostGIS** (Docker).
 
-## Требования (что нужно установить)
+## Быстрый старт
 
-- **Node.js** (у вас уже есть) + npm
-- **Python 3.11+** (не из Microsoft Store; должен работать `python --version`)
-- **Docker Desktop** (нужен для PostgreSQL/PostGIS локально)
+Полная инструкция: **[docs/START.md](docs/START.md)**
 
-Если при запуске `python` видите сообщение вроде *"No installed Python found"* — это заглушка Microsoft Store.
-Решение: поставить Python с `python.org` и включить **Add python.exe to PATH**, либо отключить *App execution aliases* для Python в настройках Windows.
-
-## Быстрый старт (фронтенд)
-
-```bash
+```powershell
 cd d:\point
 npm install
-npm run dev:web
+cd apps\web && npm install && cd ..\..
+npm run setup:api    # venv + pip (если ещё не делали)
+npm run setup:db     # Docker, миграции, демо-данные
+npm run dev:all      # http://localhost:5173
 ```
 
-Фронт поднимется на `http://localhost:5173`.
+**Админ:** `dev@point-demo.ru` / `dev12345`
 
-## Данные из базы в интерфейсе (веб + API)
+## Требования
 
-Один раз (Docker, таблицы, демо-события):
+- Node.js + npm  
+- Python 3.11+ (не Microsoft Store)  
+- Docker Desktop  
 
-```bash
-cd d:\point
-npm run setup:db
+## База данных
+
+PostgreSQL в Docker на порту **5433** (чтобы не конфликтовать с локальным Postgres на 5432).
+
+```powershell
+npm run setup:db   # первый раз
+npm run db:up      # только поднять контейнер
+npm run db:reset   # полный сброс данных
 ```
 
-Убедитесь, что в `services/api` есть venv и `pip install -e .` (см. ниже «Бэкенд»).
+Подробности: [services/api/README.md](services/api/README.md)
 
-Запуск фронта и API вместе (Vite проксирует `/api` на локальный uvicorn):
+## Структура
 
-```bash
-npm run dev:all
-```
-
-Откройте `http://localhost:5173` — список событий идёт из PostgreSQL.
-
-## Переменные окружения
-
-Скопируйте пример и вставьте ключи:
-
-```bash
-copy apps\web\.env.example apps\web\.env
-```
-
-## Прототип
-
-Ваш текущий черновик страницы лежит в корне: `index.html`, `app.js`, `style.css`, `assets/`.
-Он не удалён — используйте как референс при переносе в React.
-
-## База данных (PostGIS)
-
-```bash
-cd d:\point\infra
-docker compose up -d
-```
-
-Либо из корня: `npm run db:up`, затем `npm run db:migrate` и `npm run db:seed` (или одной командой `npm run setup:db`).
-
-После первого поднятия контейнера примените миграции и (один раз) сид демо-данных — см. раздел **«Что нужно для работы с БД»** в `services/api/README.md` (`alembic upgrade head`, затем `python -m app.seed`).
-
-## Бэкенд (FastAPI)
-
-Файлы сервиса: `services/api`.
-
-```bash
-cd d:\point\services\api
-python -m venv .venv
-.\.venv\Scripts\activate
-python -m pip install -U pip
-pip install -e .
-uvicorn app.main:app --reload --port 8000
-```
-
-
+| Путь | Описание |
+|------|----------|
+| `apps/web` | React + Vite |
+| `services/api` | FastAPI |
+| `infra` | Docker Compose (PostGIS) |
+| `diplom` | исходный модуль диплома (референс) |

@@ -17,6 +17,7 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(120))
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), server_default="user", nullable=False)
+    is_banned: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     account_type: Mapped[str] = mapped_column(String(20), server_default="viewer", nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)

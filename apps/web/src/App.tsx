@@ -6,6 +6,7 @@ import {
   IconCalendar,
   IconChevronRight,
   IconFeed,
+  IconBell,
   IconHeart,
   IconLogIn,
   IconMenu,
@@ -17,9 +18,13 @@ import {
 import { BrandLogo } from './components/BrandLogo'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SidebarCitySelect } from './components/SidebarCitySelect'
-import { ensureDemoFavoriteReviews, ensureDemoUserEventData } from './lib/eventInteractionStorage'
-import { ensureTestEvent } from './lib/localEvents'
+import {
+  ensureDemoFavoriteReviews,
+  ensureDemoUserEventData,
+  ensureTestEvent,
+} from './lib/eventInteractionStorage'
 import { ensureDemoUser } from './lib/userSession'
+import { RouteErrorBoundary } from './components/RouteErrorBoundary'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { HomePage } from './pages/HomePage'
@@ -35,6 +40,7 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { AccountPage } from './pages/AccountPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { AdminPage } from './pages/AdminPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { RequireAuth } from './components/RequireAuth'
 import { useMe } from './features/auth/queries'
 import { canModerate } from './features/auth/types'
@@ -73,6 +79,7 @@ const MY_EVENTS_NAV: NavDef[] = MY_EVENTS_SUBNAV.map((item) => ({
 const MENU_ITEMS: NavDef[] = [
   { to: '/', end: true, title: 'Лента и поиск', label: 'Лента', Icon: IconFeed },
   { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart },
+  { to: '/notifications', title: 'Уведомления', label: 'Уведомления', Icon: IconBell },
 ]
 
 const MENU_GROUPS: NavGroup[] = [{ title: 'Мои события', items: MY_EVENTS_NAV }]
@@ -88,7 +95,11 @@ const PROFILE_PATHS = new Set(['/account', '/settings', '/login'])
 
 function EventDetailRoute() {
   const { eventId } = useParams()
-  return <EventDetailPage key={eventId} />
+  return (
+    <RouteErrorBoundary title="Не удалось открыть событие">
+      <EventDetailPage key={eventId} />
+    </RouteErrorBoundary>
+  )
 }
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -109,7 +120,12 @@ function MobileBottomNav({ isAuthed, showAdmin }: { isAuthed: boolean; showAdmin
   const sheetTitleId = useId()
   const sheetLinks = [
     ...(isAuthed ? MY_EVENTS_NAV : []),
-    ...(isAuthed ? [{ to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart }] : []),
+    ...(isAuthed
+      ? [
+          { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart },
+          { to: '/notifications', title: 'Уведомления', label: 'Уведомления', Icon: IconBell },
+        ]
+      : []),
     ...(showAdmin ? [{ to: '/admin', title: 'Админ-панель', label: 'Админ-панель', Icon: IconShield }] : []),
     ...(isAuthed ? [{ to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSettings }] : []),
     ...(isAuthed ? [] : [{ to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' as const }]),
@@ -273,7 +289,7 @@ export default function App() {
         <div className="sidebarBody">
           <nav className="nav navPrimary" aria-label="Основные разделы">
             <div className="navGroupTitle">Меню</div>
-            {MENU_ITEMS.filter((item) => isAuthed || item.to !== '/favorites').map((item) => (
+            {MENU_ITEMS.filter((item) => isAuthed || (item.to !== '/favorites' && item.to !== '/notifications')).map((item) => (
               <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClass(item)} title={item.title}>
                 <span className="navIcon" aria-hidden>
                   <item.Icon />
@@ -416,9 +432,17 @@ export default function App() {
             }
           />
           <Route
+            path="/notifications"
+            element={
+              <RequireAuth>
+                <NotificationsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/admin"
             element={
-              <RequireAuth roles={['moderator', 'admin']}>
+              <RequireAuth roles={['admin']}>
                 <AdminPage />
               </RequireAuth>
             }

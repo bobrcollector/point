@@ -9,9 +9,10 @@ import { PointDropdown } from '../components/PointDropdown'
 import { IconFlag, IconLink, IconMessage, IconTelegram, IconVk, IconWhatsApp } from '../components/ShareGlyphs'
 import { IconHeart } from '../components/NavGlyphs'
 import { useResolvedEventDetail } from '../features/catalog/useResolvedEventDetail'
+import { useSubmitComplaint } from '../features/notifications/queries'
 import {
-  addReport,
   addReview,
+  findUserReview,
   isFavorite as readIsFavorite,
   isParticipating as readIsParticipating,
   readReviews,
@@ -67,10 +68,12 @@ export function EventDetailPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const isAuthed = Boolean(useAuthStore((s) => s.token))
+  const authUser = useAuthStore((s) => s.user)
   const back = getEventDetailBack(location.state)
   const q = useResolvedEventDetail(eventId)
   const d = q.data
   const user = getDemoUser()
+  const reviewAuthorName = authUser?.display_name?.trim() || user.displayName
 
   const [fav, setFav] = useState(false)
   const [going, setGoing] = useState(false)
@@ -79,7 +82,6 @@ export function EventDetailPage() {
   const [chatOpen, setChatOpen] = useState(false)
 
   const [reviewText, setReviewText] = useState('')
-  const reviewAuthor = user.displayName
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewFormOpen, setReviewFormOpen] = useState(false)
 
@@ -116,13 +118,19 @@ export function EventDetailPage() {
 
   const sortedReviews = useMemo(() => sortReviews(reviews, reviewSort), [reviews, reviewSort])
 
+  const userId = authUser?.id != null ? String(authUser.id) : null
+  const myReview = useMemo(
+    () => (eventId && userId ? findUserReview(eventId, userId) : undefined),
+    [eventId, userId, reviewTick]
+  )
+
   const notFound = q.isLocal
     ? !q.isLoading && !d
     : isAxiosError(q.error) && q.error.response?.status === 404
 
   const eventEnded = d ? isEventPast(d.event_datetime) : false
   const attended = going && eventEnded
-  const canReview = isAuthed && attended
+  const canReview = isAuthed && eventEnded && going && !myReview
 
   const shareUrl = useMemo(() => (eventId ? eventShareUrl(eventId) : ''), [eventId])
 
@@ -242,22 +250,35 @@ export function EventDetailPage() {
 
   const onSubmitReview = (e: FormEvent) => {
     e.preventDefault()
-    if (!requireAuth()) return
+    if (!requireAuth() || !canReview || !userId) return
     const text = reviewText.trim()
     if (!text) return
-    addReview(eventId, { author: reviewAuthor.trim() || user.displayName, text, rating: reviewRating })
-    setReviewText('')
-    setReviewFormOpen(false)
-    setReviewTick((x) => x + 1)
+    try {
+      addReview(eventId, userId, { author: reviewAuthorName, text, rating: reviewRating })
+      setReviewText('')
+      setReviewFormOpen(false)
+      setReviewTick((x) => x + 1)
+    } catch {
+      setReviewFormOpen(false)
+    }
   }
 
-  const onSubmitReport = (e: FormEvent) => {
+  const submitComplaint = useSubmitComplaint()
+
+  const onSubmitReport = async (e: FormEvent) => {
     e.preventDefault()
-    addReport({ eventId, reason: reportReason, details: reportDetails.trim() })
-    setReportOpen(false)
-    setReportDetails('')
-    setReportDone(true)
-    window.setTimeout(() => setReportDone(false), 2400)
+    const numericId = Number(eventId)
+    if (!Number.isFinite(numericId)) return
+    const reason = [reportReason, reportDetails.trim()].filter(Boolean).join(': ')
+    try {
+      await submitComplaint.mutateAsync({ event_id: numericId, reason })
+      setReportOpen(false)
+      setReportDetails('')
+      setReportDone(true)
+      window.setTimeout(() => setReportDone(false), 2400)
+    } catch {
+      setReportDone(false)
+    }
   }
 
   return (
@@ -283,7 +304,9 @@ export function EventDetailPage() {
             <div className="eventDetailMeta">
               {new Date(d.event_datetime).toLocaleString('ru-RU', { dateStyle: 'long', timeStyle: 'short' })}
               {' · '}
-              {d.average_rating ? `★ ${d.average_rating.toFixed(1)}` : 'без оценок'}
+              {typeof d.average_rating === 'number' && Number.isFinite(d.average_rating)
+                ? `★ ${d.average_rating.toFixed(1)}`
+                : 'без оценок'}
             </div>
           </div>
         </div>
@@ -301,15 +324,17 @@ export function EventDetailPage() {
             >
               Был(а) там
             </button>
+          ) : eventEnded ? (
+            <button type="button" className="eventDetailBtn eventDetailBtnToggle" onClick={onToggleGoing}>
+              Отметить, что был(а)
+            </button>
           ) : (
             <button
               type="button"
               className={going ? 'eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive' : 'eventDetailBtn eventDetailBtnToggle'}
               onClick={onToggleGoing}
-              disabled={eventEnded}
-              title={eventEnded ? 'Нельзя отметить участие в прошедшем событии' : undefined}
             >
-              {eventEnded ? 'Мероприятие прошло' : going ? 'Вы идёте' : 'Пойду'}
+              {going ? 'Вы идёте' : 'Пойду'}
             </button>
           )}
           <button
@@ -505,6 +530,12 @@ export function EventDetailPage() {
             <p className="eventDetailMuted">Пока нет отзывов.</p>
           )}
 
+          {myReview ? (
+            <p className="eventDetailMuted" style={{ marginTop: 10 }}>
+              Вы уже оставили отзыв на это мероприятие.
+            </p>
+          ) : null}
+
           {canReview ? (
             <>
               {!reviewFormOpen ? (
@@ -561,17 +592,17 @@ export function EventDetailPage() {
               </form>
               )}
             </>
-          ) : (
+          ) : !myReview ? (
             <p className="eventDetailMuted" style={{ marginTop: 10 }}>
               {!isAuthed
-                ? 'Войдите, чтобы присоединиться к событию и оставить отзыв после посещения.'
-                : attended
-                  ? null
-                : going
-                  ? 'Отзыв можно оставить после мероприятия — когда дата события наступит и вы его посетите.'
-                  : 'Отзывы доступны после посещения: отметьте «Пойду» и приходите на событие.'}
+                ? 'Войдите, чтобы отметить посещение и оставить отзыв.'
+                : eventEnded
+                  ? 'Нажмите «Отметить, что был(а)», чтобы оставить отзыв о прошедшем мероприятии.'
+                  : going
+                    ? 'Отзыв можно оставить после даты мероприятия, когда вы побываете на нём.'
+                    : 'Отметьте «Пойду», а после мероприятия — посещение, чтобы оставить отзыв.'}
             </p>
-          )}
+          ) : null}
         </section>
       </div>
 

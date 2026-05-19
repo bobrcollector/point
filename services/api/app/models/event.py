@@ -33,6 +33,8 @@ class Event(Base):
     is_for_children: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     age_rating_min: Mapped[int] = mapped_column(Integer, server_default="12", nullable=False)
     status: Mapped[str] = mapped_column(String(20), server_default="draft", nullable=False, index=True)
+    moderation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
     requires_registration: Mapped[bool] = mapped_column(Boolean, server_default="true", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

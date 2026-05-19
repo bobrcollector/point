@@ -1,5 +1,9 @@
 import asyncio
+import sys
 from logging.config import fileConfig
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -58,8 +62,19 @@ async def run_async_migrations() -> None:
     await connectable.dispose()
 
 
+def run_migrations_online_sync() -> None:
+    from sqlalchemy import create_engine
+
+    url = get_url().replace("postgresql+asyncpg://", "postgresql+psycopg://")
+    connectable = create_engine(url, poolclass=pool.NullPool)
+    with connectable.connect() as connection:
+        do_run_migrations(connection)
+    connectable.dispose()
+
+
 def run_migrations_online() -> None:
-    asyncio.run(run_async_migrations())
+    # Синхронный psycopg стабильнее asyncpg при миграциях (особенно на Windows).
+    run_migrations_online_sync()
 
 
 if context.is_offline_mode():

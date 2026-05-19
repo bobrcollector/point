@@ -2,12 +2,9 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { api } from '../../lib/api'
-import {
-  getLocalEventById,
-  isLocalEventId,
-  localEventToApiDetail
-} from '../../lib/eventInteractionStorage'
-import type { ApiEventDetail, EventsResponse } from './types'
+import { getLocalEventById, isLocalEventId } from '../../lib/eventInteractionStorage'
+import { resolveGalleryUrls, resolveMediaUrl } from '../../lib/mediaUrl'
+import type { ApiEventDetail, ApiEventItem, EventsResponse } from './types'
 
 const CatalogEventItemSchema = z.object({
   event_id: z.number(),
@@ -40,14 +37,28 @@ const TicketTypeSchema = z.object({
   quantity: z.number().int()
 })
 
+function withResolvedMediaItem<T extends ApiEventItem>(item: T): T {
+  return {
+    ...item,
+    cover_image_url: resolveMediaUrl(item.cover_image_url ?? null) ?? item.cover_image_url ?? null,
+  }
+}
+
+function withResolvedMediaDetail(item: ApiEventDetail): ApiEventDetail {
+  return {
+    ...withResolvedMediaItem(item),
+    gallery_urls: resolveGalleryUrls(item.gallery_urls),
+  }
+}
+
 export const EventDetailSchema = CatalogEventItemSchema.extend({
   description: z.string(),
-  address_detail: z.string(),
+  address_detail: z.string().optional().default(''),
   organizer_name: z.string(),
-  gallery_urls: z.array(z.string()),
-  participants_count: z.number().int(),
+  gallery_urls: z.array(z.string()).optional().default([]),
+  participants_count: z.coerce.number().int().nonnegative(),
   requires_registration: z.boolean().optional(),
-  ticket_types: z.array(TicketTypeSchema).optional()
+  ticket_types: z.array(TicketTypeSchema).optional().default([]),
 })
 
 export function catalogEventDetailQueryOptions(eventId: string) {
@@ -57,7 +68,12 @@ export function catalogEventDetailQueryOptions(eventId: string) {
     enabled: /^\d+$/.test(eventId) && Number.isFinite(numericId) && numericId > 0,
     queryFn: async (): Promise<ApiEventDetail> => {
       const res = await api.get(`/api/v1/catalog/events/${numericId}`)
-      return EventDetailSchema.parse(res.data)
+      const parsed = EventDetailSchema.safeParse(res.data)
+      if (!parsed.success) {
+        console.error('catalog event detail schema', parsed.error.flatten())
+        throw new Error('Сервер вернул некорректные данные события')
+      }
+      return withResolvedMediaDetail(parsed.data)
     },
     staleTime: 30_000
   }
@@ -83,7 +99,11 @@ export function useEvents(query: EventsQuery) {
     queryKey: ['catalog', 'events', query],
     queryFn: async (): Promise<EventsResponse> => {
       const res = await api.get('/api/v1/catalog/events', { params: query })
-      return EventsResponseSchema.parse(res.data)
+      const parsed = EventsResponseSchema.parse(res.data)
+      return {
+        ...parsed,
+        items: parsed.items.map((it) => withResolvedMediaItem(it)),
+      }
     },
     staleTime: 15000,
     placeholderData: (prev) => prev
@@ -107,39 +127,6 @@ export function useEventDetail(eventId: string | undefined) {
     ...catalogEventDetailQueryOptions(eventId ?? ''),
     enabled
   })
-}
-
-export function useResolvedEventDetail(eventId: string | undefined) {
-  const isLocal = isLocalEventId(eventId)
-  const apiQuery = useEventDetail(isLocal ? undefined : eventId)
-
-  const localQuery = useQuery({
-    queryKey: ['local', 'event', eventId],
-    enabled: Boolean(eventId && isLocal),
-    queryFn: (): ApiEventDetail | null => {
-      const row = getLocalEventById(eventId!)
-      return row ? localEventToApiDetail(row) : null
-    },
-    staleTime: 60_000
-  })
-
-  if (isLocal) {
-    return {
-      isLocal: true as const,
-      data: localQuery.data ?? undefined,
-      isLoading: localQuery.isLoading,
-      isError: localQuery.isError,
-      error: localQuery.error
-    }
-  }
-
-  return {
-    isLocal: false as const,
-    data: apiQuery.data,
-    isLoading: apiQuery.isLoading,
-    isError: apiQuery.isError,
-    error: apiQuery.error
-  }
 }
 
 export type StoredEventCard = {
@@ -185,7 +172,7 @@ export function useStoredEventCards(ids: string[]): StoredEventCard[] {
         place: row.location,
         price: row.price,
         coverUrl: row.cover_image_url ?? undefined,
-        categories: row.categories.map((c) => c.name),
+        categories: row.categories.map((c: { name: string }) => c.name),
         ageRatingMin: row.age_rating_min
       }))
 

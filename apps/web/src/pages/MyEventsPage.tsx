@@ -18,7 +18,9 @@ type MyEventsRouteKey = 'organized' | 'attending'
 type MyEventsPeriod = 'active' | 'archive'
 
 function statusLabel(status: string) {
-  if (status === 'published') return 'Опубликовано'
+  if (status === 'approved') return 'В ленте'
+  if (status === 'pending') return 'На модерации'
+  if (status === 'rejected') return 'Отклонено'
   if (status === 'cancelled') return 'Отменено'
   return 'Черновик'
 }
@@ -144,7 +146,7 @@ function OrganizerCard({ event, onDeleted }: { event: OrganizerEventListItem; on
           {event.price === 0 ? 'Бесплатно' : `от ${event.price} ₽`} · билетов: {event.ticket_types_count}
         </div>
         <div className="eventListCardActions">
-          {event.status === 'published' ? (
+          {event.status === 'approved' ? (
             <Link className="mapEventCardBtn" to={`/events/${event.event_id}`}>
               Открыть
             </Link>

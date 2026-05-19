@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { api } from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
-import type { OrganizerRequest, OrganizerRequestAdmin, UserMe } from './types'
+import { enablePwaPush } from '../../lib/push'
+import type { UserMe } from './types'
 
 const CategoryRefSchema = z.object({ id: z.number(), name: z.string() })
 
@@ -10,8 +11,8 @@ const UserMeSchema = z.object({
   id: z.number(),
   email: z.string(),
   display_name: z.string(),
-  role: z.enum(['user', 'organizer', 'moderator', 'admin']),
-  account_type: z.enum(['viewer', 'organizer']),
+  role: z.enum(['user', 'admin']),
+  account_type: z.string(),
   avatar_url: z.string().nullable(),
   bio: z.string().nullable(),
   organizer_description: z.string().nullable(),
@@ -27,16 +28,6 @@ const UserMeSchema = z.object({
 })
 
 const TokenSchema = z.object({ access_token: z.string(), token_type: z.string().optional() })
-
-const OrganizerRequestSchema = z.object({
-  id: z.number(),
-  status: z.enum(['pending', 'approved', 'rejected']),
-  description: z.string(),
-  document_path: z.string(),
-  admin_note: z.string().nullable(),
-  created_at: z.string(),
-  reviewed_at: z.string().nullable(),
-})
 
 async function fetchMe(): Promise<UserMe> {
   const res = await api.get('/api/v1/users/me')
@@ -68,6 +59,7 @@ export function useLogin() {
       }
       const me = await fetchMe()
       setSession(access_token, me)
+      if (me.notify_push) void enablePwaPush()
       return me
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auth'] }),
@@ -78,17 +70,8 @@ export function useRegister() {
   const qc = useQueryClient()
   const setSession = useAuthStore((s) => s.setSession)
   return useMutation({
-    mutationFn: async (body: {
-      email: string
-      password: string
-      display_name: string
-      account_type?: 'viewer' | 'organizer'
-      organizer_description?: string
-    }) => {
-      const res = await api.post('/api/v1/auth/register', {
-        ...body,
-        account_type: body.account_type ?? 'viewer',
-      })
+    mutationFn: async (body: { email: string; password: string; display_name: string }) => {
+      const res = await api.post('/api/v1/auth/register', body)
       const { access_token } = TokenSchema.parse(res.data)
       useAuthStore.setState({ token: access_token })
       try {
@@ -98,29 +81,7 @@ export function useRegister() {
       }
       const me = await fetchMe()
       setSession(access_token, me)
-      return me
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auth'] }),
-  })
-}
-
-export function useRegisterOrganizer() {
-  const qc = useQueryClient()
-  const setSession = useAuthStore((s) => s.setSession)
-  return useMutation({
-    mutationFn: async (form: FormData) => {
-      const res = await api.post('/api/v1/auth/register/organizer', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      const { access_token } = TokenSchema.parse(res.data)
-      useAuthStore.setState({ token: access_token })
-      try {
-        localStorage.setItem('point:accessToken', access_token)
-      } catch {
-        // ignore
-      }
-      const me = await fetchMe()
-      setSession(access_token, me)
+      if (me.notify_push) void enablePwaPush()
       return me
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auth'] }),
@@ -195,71 +156,13 @@ export function useSetInterests() {
   })
 }
 
-export function useOrganizerRequest() {
-  const token = useAuthStore((s) => s.token)
-  return useQuery({
-    queryKey: ['auth', 'organizer-request'],
-    queryFn: async (): Promise<OrganizerRequest | null> => {
-      const res = await api.get('/api/v1/users/me/organizer-request')
-      if (res.data == null) return null
-      return OrganizerRequestSchema.parse(res.data)
-    },
-    enabled: Boolean(token),
-  })
-}
-
-export function useSubmitOrganizerRequest() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (form: FormData) => {
-      const res = await api.post('/api/v1/users/me/organizer-request', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      return OrganizerRequestSchema.parse(res.data)
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['auth', 'organizer-request'] }),
-  })
-}
-
-export function useAdminOrganizerRequests(status?: string) {
-  return useQuery({
-    queryKey: ['admin', 'organizer-requests', status],
-    queryFn: async (): Promise<OrganizerRequestAdmin[]> => {
-      const res = await api.get('/api/v1/admin/organizer-requests', { params: status ? { status } : {} })
-      const schema = z.object({
-        items: z.array(
-          OrganizerRequestSchema.extend({
-            user_id: z.number(),
-            user_email: z.string(),
-            user_display_name: z.string(),
-          })
-        ),
-      })
-      return schema.parse(res.data).items
-    },
-  })
-}
-
-export function useReviewOrganizerRequest() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (args: { id: number; status: 'approved' | 'rejected'; admin_note?: string }) => {
-      const res = await api.patch(`/api/v1/admin/organizer-requests/${args.id}`, {
-        status: args.status,
-        admin_note: args.admin_note,
-      })
-      return res.data
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin'] }),
-  })
-}
-
 export async function hydrateSessionFromToken() {
   const token = useAuthStore.getState().token
   if (!token) return null
   try {
     const me = await fetchMe()
     useAuthStore.getState().setUser(me)
+    if (me.notify_push) void enablePwaPush()
     return me
   } catch {
     useAuthStore.getState().logout()

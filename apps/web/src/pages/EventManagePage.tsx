@@ -195,14 +195,14 @@ export function EventManagePage({ mode }: Props) {
     setError(null)
     const payload: EventFormDraft = {
       ...draft,
-      status: publish ? 'published' : asDraft ? 'draft' : draft.status === 'published' ? 'published' : 'draft'
+      status: asDraft ? 'draft' : draft.status === 'approved' ? 'approved' : 'draft'
     }
     try {
       let savedId = eventId
       if (mode === 'create') {
         const created = await createMut.mutateAsync(payload)
         savedId = created.event_id
-        if (publish && created.status !== 'published') {
+        if (publish && created.status !== 'approved') {
           await publishMut.mutateAsync(created.event_id)
         }
       } else if (eventId) {
@@ -566,9 +566,9 @@ export function EventManagePage({ mode }: Props) {
                   : ' · Без записи'}
               </p>
               <p className="eventDetailMuted">
-                Черновик виден только вам в «Мои события». Опубликованное событие появится в ленте и на карте.
+                Черновик виден только вам. После отправки на модерацию событие появится в ленте после одобрения администратором.
               </p>
-              {mode === 'edit' && draft.status === 'published' ? (
+              {mode === 'edit' && draft.status === 'approved' ? (
                 <button
                   type="button"
                   className="eventDetailBtn"
@@ -594,7 +594,7 @@ export function EventManagePage({ mode }: Props) {
           </button>
         ) : (
           <>
-            {mode === 'create' || draft.status !== 'published' ? (
+            {mode === 'create' || draft.status !== 'approved' ? (
               <button
                 type="button"
                 className="eventDetailBtn"
@@ -611,7 +611,7 @@ export function EventManagePage({ mode }: Props) {
               disabled={createMut.isPending || updateMut.isPending || publishMut.isPending}
               onClick={() => void save(true)}
             >
-              {mode === 'edit' && draft.status === 'published' ? 'Сохранить' : 'Опубликовать'}
+              {mode === 'edit' && draft.status === 'approved' ? 'Сохранить' : 'На модерацию'}
             </button>
           </>
         )}

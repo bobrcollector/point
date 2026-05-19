@@ -29,8 +29,6 @@ async def register_user(
     email: str,
     password: str,
     display_name: str,
-    account_type: str = "viewer",
-    organizer_description: str | None = None,
 ) -> User:
     exists = await session.scalar(select(User.id).where(User.email == email.lower()))
     if exists is not None:
@@ -41,8 +39,7 @@ async def register_user(
         display_name=display_name.strip(),
         password_hash=hash_password(password),
         role="user",
-        account_type=account_type,
-        organizer_description=organizer_description.strip() if organizer_description else None,
+        account_type="viewer",
         email_verified=False,
         verification_token=hash_token(token),
         verification_token_expires_at=datetime.now(timezone.utc) + timedelta(hours=48),
@@ -63,6 +60,8 @@ async def authenticate(session: AsyncSession, *, email: str, password: str) -> U
     user = await session.scalar(select(User).where(User.email == email.lower().strip()))
     if user is None or not verify_password(password, user.password_hash):
         return None
+    if user.is_banned:
+        raise ValueError("user_banned")
     return user
 
 

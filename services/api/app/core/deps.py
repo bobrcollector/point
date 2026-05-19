@@ -11,7 +11,7 @@ from app.models import User
 
 bearer = HTTPBearer(auto_error=False)
 
-ROLE_RANK = {"user": 1, "organizer": 2, "moderator": 3, "admin": 4}
+ROLE_RANK = {"user": 1, "admin": 2}
 
 
 async def get_current_user_optional(
@@ -28,6 +28,8 @@ async def get_current_user_optional(
         return None
     user = await session.get(User, user_id)
     if user is None:
+        return None
+    if user.is_banned:
         return None
     return user
 
@@ -53,7 +55,12 @@ def _role_at_least(user_role: str, allowed: tuple[str, ...]) -> bool:
     return user_rank >= needed and user_rank >= needed
 
 
-async def require_moderator(user: User = Depends(get_current_user)) -> User:
-    if user.role not in ("moderator", "admin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ только для модераторов")
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ только для администратора")
+    return user
+
+
+async def require_moderator(user: User = Depends(require_admin)) -> User:
+    """Совместимость: модерация только у admin."""
     return user

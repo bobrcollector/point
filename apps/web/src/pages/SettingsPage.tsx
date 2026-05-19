@@ -6,15 +6,13 @@ import { RequireAuth } from '../components/RequireAuth'
 import { useCategories } from '../features/catalog/queries'
 import {
   useMe,
-  useOrganizerRequest,
   useSetInterests,
-  useSubmitOrganizerRequest,
   useUpdateProfile,
   useUpdateSettings,
   useUploadAvatar,
 } from '../features/auth/queries'
-import { isOrganizerProfile, isOrganizerRole } from '../features/auth/types'
 import { api } from '../lib/api'
+import { enablePwaPush } from '../lib/push'
 import { useAuthStore } from '../stores/authStore'
 
 function SettingsContent() {
@@ -27,18 +25,11 @@ function SettingsContent() {
   const setInterests = useSetInterests()
   const updateSettings = useUpdateSettings()
   const categoriesQ = useCategories()
-  const orgReqQ = useOrganizerRequest()
-  const submitOrg = useSubmitOrganizerRequest()
-
-  const showOrganizerSection = profile ? isOrganizerProfile(profile) : false
-
   const [displayName, setDisplayName] = useState('')
   const [bio, setBio] = useState('')
-  const [organizerDesc, setOrganizerDesc] = useState('')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
   const [selectedCats, setSelectedCats] = useState<number[]>([])
-  const [orgFile, setOrgFile] = useState<File | null>(null)
 
   const [notifyEmail, setNotifyEmail] = useState(true)
   const [notifyPush, setNotifyPush] = useState(false)
@@ -52,7 +43,6 @@ function SettingsContent() {
     if (!profile) return
     setDisplayName(profile.display_name)
     setBio(profile.bio ?? '')
-    setOrganizerDesc(profile.organizer_description ?? '')
     setPhone(profile.phone ?? '')
     setCity(profile.city ?? '')
     setSelectedCats(profile.interests.map((c) => c.id))
@@ -89,33 +79,6 @@ function SettingsContent() {
     }
   }
 
-  async function saveOrganizerInfo(e: FormEvent) {
-    e.preventDefault()
-    setMsg(null)
-    try {
-      await updateProfile.mutateAsync({ organizer_description: organizerDesc || null })
-      setMsg('Данные организатора сохранены')
-    } catch {
-      setMsg('Ошибка сохранения')
-    }
-  }
-
-  async function submitOrganizerDoc(e: FormEvent) {
-    e.preventDefault()
-    if (!orgFile || !organizerDesc.trim()) return
-    const fd = new FormData()
-    fd.append('description', organizerDesc)
-    fd.append('document', orgFile)
-    try {
-      await submitOrg.mutateAsync(fd)
-      setMsg('Документ отправлен на проверку')
-      setOrgFile(null)
-    } catch (err) {
-      const detail = isAxiosError(err) ? (err.response?.data as { detail?: string })?.detail : null
-      setMsg(detail ?? 'Ошибка отправки документа')
-    }
-  }
-
   async function saveAppSettings(e: FormEvent) {
     e.preventDefault()
     setMsg(null)
@@ -126,6 +89,7 @@ function SettingsContent() {
         locale,
         profile_visibility: visibility,
       })
+      if (notifyPush) await enablePwaPush()
       setMsg('Настройки приложения сохранены')
     } catch {
       setMsg('Ошибка сохранения')
@@ -249,48 +213,6 @@ function SettingsContent() {
           </button>
         </form>
       </section>
-
-      {showOrganizerSection ? (
-        <section className="accountSection">
-          <h2 className="accountSectionTitle">Профиль организатора</h2>
-          {isOrganizerRole(profile.role) ? (
-            <p className="pageSub">Статус подтверждён</p>
-          ) : orgReqQ.data?.status === 'pending' ? (
-            <p className="pageSub">Заявка на рассмотрении</p>
-          ) : orgReqQ.data?.status === 'rejected' ? (
-            <p className="authError">Заявка отклонена: {orgReqQ.data.admin_note ?? 'без комментария'}</p>
-          ) : null}
-
-          <form className="accountForm" onSubmit={saveOrganizerInfo}>
-            <label className="label">О деятельности организатора</label>
-            <textarea
-              className="input authTextarea"
-              value={organizerDesc}
-              onChange={(e) => setOrganizerDesc(e.target.value)}
-              minLength={20}
-              rows={5}
-            />
-            <button type="submit" className="homeGhostBtn" disabled={updateProfile.isPending}>
-              Сохранить описание
-            </button>
-          </form>
-
-          {!isOrganizerRole(profile.role) && orgReqQ.data?.status !== 'pending' ? (
-            <form className="accountForm" onSubmit={submitOrganizerDoc}>
-              <label className="label">Документ для верификации (PDF, JPG, PNG, до 5 МБ)</label>
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp"
-                onChange={(e) => setOrgFile(e.target.files?.[0] ?? null)}
-                required
-              />
-              <button type="submit" className="homePrimaryBtn" disabled={submitOrg.isPending}>
-                Отправить на проверку
-              </button>
-            </form>
-          ) : null}
-        </section>
-      ) : null}
 
       <section className="accountSection">
         <h2 className="accountSectionTitle">Уведомления и интерфейс</h2>

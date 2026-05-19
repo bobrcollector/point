@@ -1,4 +1,4 @@
-export type EventStatus = 'draft' | 'published' | 'cancelled'
+export type EventStatus = 'draft' | 'pending' | 'approved' | 'rejected'
 
 export type TicketTypeDraft = {
   name: string

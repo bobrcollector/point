@@ -1,59 +1,64 @@
 # Point API (FastAPI)
 
-## Что нужно для работы с БД
+## База данных
 
-1. **PostGIS в Docker** (PostgreSQL уже внутри образа):
-
-```powershell
-cd d:\point\infra
-docker compose up -d
-```
-
-2. **Переменные окружения** (опционально): скопируйте `.env.example` в `.env` в этой папке и при необходимости измените `DATABASE_URL`.
-
-3. **Миграции** (создают таблицы `users`, `categories`, `events`, `event_categories` и расширение PostGIS):
-
-```powershell
-cd d:\point\services\api
-.\.venv\Scripts\activate
-pip install -e .
-alembic upgrade head
-```
-
-4. **Демо-данные** (категории, пользователь `dev@point.local`, события с id 101–114 как раньше в моках):
-
-```powershell
-python -m app.seed
-```
-
-Повторный запуск сида ничего не дублирует: если событие `101` уже есть, скрипт выходит.
-
-## Запуск API
-
-```powershell
-cd d:\point\services\api
-.\.venv\Scripts\activate
-uvicorn app.main:app --reload --port 8000
-```
-
-Проверки:
-
-- `http://localhost:8000/health` — процесс жив.
-- `http://localhost:8000/health/db` — соединение с PostgreSQL.
-- Swagger: `http://localhost:8000/docs`.
-
-Каталог (`/api/v1/catalog/events` и др.) читает данные **из базы**, не из заглушек в коде.
-
-## Из корня репозитория (`d:\point`)
-
-Один раз: поднять PostGIS, миграции и демо-события:
+Из **корня** репозитория:
 
 ```powershell
 npm run setup:db
 ```
 
-Затем веб и API вместе (фронт в dev проксирует `/api` на `http://127.0.0.1:8000`):
+Или по шагам:
 
 ```powershell
-npm run dev:all
+npm run db:up
+npm run db:migrate
+npm run db:seed
+```
+
+### Подключение
+
+Файл `services/api/.env` (создаётся автоматически скриптом `ensure-api-env`):
+
+```env
+DATABASE_URL=postgresql+asyncpg://point:point@127.0.0.1:5433/point
+```
+
+Порт задаётся в `infra/.env` → `POSTGRES_PORT=5433`.
+
+### Проверка
+
+- http://127.0.0.1:8000/health  
+- http://127.0.0.1:8000/health/db  
+- http://127.0.0.1:8000/docs  
+
+### Демо-данные
+
+- Пользователь: `dev@point-demo.ru` / `dev12345` (роль admin)  
+- События id 101–114 в статусе `approved` (видны в ленте)  
+
+Повторный `npm run db:seed` не дублирует события.
+
+## Python venv (вручную)
+
+```powershell
+cd d:\point\services\api
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -U pip
+pip install -e .
+```
+
+Или из корня: `npm run setup:api`
+
+## Запуск API
+
+Из корня: `npm run dev:api`
+
+Или вручную:
+
+```powershell
+cd d:\point\services\api
+.\.venv\Scripts\activate
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```

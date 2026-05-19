@@ -16,6 +16,7 @@ from app.api.v1.organizer.schemas import (
     UploadResponse,
 )
 from app.core.config import settings
+from app.core.media import abs_media_url
 from app.db.session import get_db
 
 router = APIRouter()
@@ -131,4 +132,4 @@ async def upload_image(
     name = f"{uuid.uuid4().hex}{out_ext}"
     path = UPLOAD_DIR / name
     path.write_bytes(processed)
-    return {"url": f"/api/v1/media/{name}"}
+    return {"url": abs_media_url(f"/api/v1/media/{name}") or f"/api/v1/media/{name}"}

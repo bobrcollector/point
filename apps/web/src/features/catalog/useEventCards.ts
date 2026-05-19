@@ -1,6 +1,6 @@
 import { useQueries } from '@tanstack/react-query'
 
-import { isLocalEventId, localEventDetailQueryOptions } from '../../lib/localEvents'
+import { isLocalEventId, localEventDetailQueryOptions } from '../../lib/eventInteractionStorage'
 
 import type { EventListCardData } from '../../components/EventListCard'
 

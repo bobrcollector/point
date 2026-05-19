@@ -4,6 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import func, select, text
 
+from app.core.media import upload_file_exists
 from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
 from app.models import Category, Event, User
@@ -14,11 +15,23 @@ LEGACY_DEV_EMAIL = "dev@point.local"
 DEV_PASSWORD = "dev12345"
 
 
+def _picsum_cover(eid: int) -> str:
+    return f"https://picsum.photos/seed/point{eid}/1200/800"
+
+
+def _picsum_gallery(eid: int) -> list[str]:
+    return [
+        f"https://picsum.photos/seed/point{eid}a/1200/800",
+        f"https://picsum.photos/seed/point{eid}b/1200/800",
+        f"https://picsum.photos/seed/point{eid}c/1200/800",
+    ]
+
+
 def _cover_url(eid: int, raw: dict[str, object]) -> str:
     cover = raw.get("cover_image_url")
     if cover:
         return str(cover)
-    return f"https://picsum.photos/seed/point{eid}/1200/800"
+    return _picsum_cover(eid)
 
 
 def _detail_fields(eid: int, title: str, venue: str) -> tuple[str, str, str, list[str], int]:
@@ -29,20 +42,36 @@ def _detail_fields(eid: int, title: str, venue: str) -> tuple[str, str, str, lis
     )
     address_detail = f"{venue}, Москва — вход по электронному билету или списку участников."
     organizer_name = "Point Community" if eid % 2 == 0 else "Городские инициативы"
-    gallery_urls = [
-        f"https://picsum.photos/seed/point{eid}a/1200/800",
-        f"https://picsum.photos/seed/point{eid}b/1200/800",
-        f"https://picsum.photos/seed/point{eid}c/1200/800",
-    ]
+    gallery_urls = _picsum_gallery(eid)
     participants_count = 18 + (eid % 55)
     return description, address_detail, organizer_name, gallery_urls, participants_count
 
 
 async def _backfill_covers(session) -> int:
-    events = (await session.execute(select(Event).where(Event.cover_image_url.is_(None)))).scalars().all()
+    events = (await session.execute(select(Event))).scalars().all()
+    updated = 0
     for ev in events:
-        ev.cover_image_url = f"https://picsum.photos/seed/point{ev.id}/1200/800"
-    return len(events)
+        cover = ev.cover_image_url
+        needs_cover = cover is None or (
+            (str(cover).startswith("/api/v1/media/") or str(cover).startswith("/uploads/"))
+            and not upload_file_exists(str(cover))
+        )
+        if needs_cover:
+            ev.cover_image_url = _picsum_cover(ev.id)
+            updated += 1
+        g = ev.gallery_urls if isinstance(ev.gallery_urls, list) else []
+        if not g or (
+            g
+            and all(
+                str(u).startswith("/")
+                and (str(u).startswith("/api/v1/media/") or str(u).startswith("/uploads/"))
+                and not upload_file_exists(str(u))
+                for u in g
+            )
+        ):
+            ev.gallery_urls = _picsum_gallery(ev.id)
+            updated += 1
+    return updated
 
 
 async def _ensure_dev_admin(session) -> None:
@@ -59,7 +88,6 @@ async def _ensure_dev_admin(session) -> None:
             display_name="Point Dev",
             password_hash=hash_password(DEV_PASSWORD),
             role="admin",
-            account_type="organizer",
             email_verified=True,
         )
         session.add(dev)
@@ -71,9 +99,6 @@ async def _ensure_dev_admin(session) -> None:
         changed = True
     if dev.role != "admin":
         dev.role = "admin"
-        changed = True
-    if dev.account_type != "organizer":
-        dev.account_type = "organizer"
         changed = True
     if not dev.email_verified:
         dev.email_verified = True
@@ -90,9 +115,9 @@ async def main() -> None:
             updated = await _backfill_covers(session)
             if updated:
                 await session.commit()
-                print(f"Seed: backfilled cover_image_url for {updated} events.")
+                print(f"Seed: restored missing event images for {updated} row(s).")
             else:
-                print("Seed skipped: demo data already present (event id=101).")
+                print("Seed: demo data present, image URLs OK.")
             await _ensure_dev_admin(session)
             return
 
@@ -103,7 +128,6 @@ async def main() -> None:
                 display_name="Point Dev",
                 password_hash=hash_password(DEV_PASSWORD),
                 role="admin",
-                account_type="organizer",
                 email_verified=True,
             )
             session.add(dev_user)
@@ -141,7 +165,7 @@ async def main() -> None:
                 participants_count=p_count,
                 is_for_children=bool(raw.get("is_for_children", False)),
                 age_rating_min=int(raw.get("age_rating_min", 0 if raw.get("is_for_children") else 12)),
-                status="published",
+                status="approved",
                 requires_registration=True,
             )
             ev.categories.append(cats[cat_id])

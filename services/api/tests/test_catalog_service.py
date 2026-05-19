@@ -219,6 +219,19 @@ class TestFilterAndSort:
         assert [t[0].id for t in result] == [1]
 
 
+class TestGetEventByIdFilter:
+    """Список и карточка должны использовать один статус (approved)."""
+
+    def test_approved_status_constant_matches_load_all(self):
+        import inspect
+
+        src_load = inspect.getsource(catalog_service.load_all_events)
+        src_detail = inspect.getsource(catalog_service.get_event_by_id)
+        assert 'status == "approved"' in src_load
+        assert 'status == "published"' not in src_detail
+        assert 'status == "approved"' in src_detail
+
+
 class TestEventToItemDict:
     def test_serializes_fields(self):
         ev = make_event(

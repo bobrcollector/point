@@ -20,6 +20,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       devOptions: { enabled: false },
       includeAssets: ['favicon.svg'],
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,ico}'],
+        importScripts: ['/sw-push.js'],
+      },
       manifest: {
         name: 'Point — Афиша событий',
         short_name: 'Point',
