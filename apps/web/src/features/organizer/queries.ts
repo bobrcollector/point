@@ -5,6 +5,7 @@ import {
   getOrganizerEvent,
   listMyOrganizerEvents,
   publishOrganizerEvent,
+  finishOrganizerEvent,
   updateOrganizerEvent
 } from './api'
 import type { EventFormDraft } from './types'
@@ -65,6 +66,17 @@ export function usePublishEvent() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (eventId: number) => publishOrganizerEvent(eventId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['organizer', 'events'] })
+      void qc.invalidateQueries({ queryKey: ['catalog'] })
+    }
+  })
+}
+
+export function useFinishEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (eventId: number) => finishOrganizerEvent(eventId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['organizer', 'events'] })
       void qc.invalidateQueries({ queryKey: ['catalog'] })

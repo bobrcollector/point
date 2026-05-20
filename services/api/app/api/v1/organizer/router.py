@@ -107,6 +107,17 @@ async def publish_event(
     return OrganizerEventDetail.model_validate(organizer_service._event_to_detail(ev))
 
 
+@router.post("/events/{event_id}/finish", response_model=OrganizerEventDetail)
+async def finish_event(
+    event_id: int,
+    session: AsyncSession = Depends(get_db),
+    organizer_id: int = Depends(get_current_organizer_id),
+):
+    ev = await organizer_service.finish_event(session, organizer_id, event_id)
+    await session.commit()
+    return OrganizerEventDetail.model_validate(organizer_service._event_to_detail(ev))
+
+
 @router.post("/uploads", response_model=UploadResponse)
 async def upload_image(
     file: UploadFile = File(...),

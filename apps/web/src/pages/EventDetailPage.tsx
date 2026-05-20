@@ -7,7 +7,10 @@ import { EventDetailGallery } from '../components/EventDetailGallery'
 import { OrganizerChatPanel } from '../components/OrganizerChatPanel'
 import { PointDropdown } from '../components/PointDropdown'
 import { IconFlag, IconLink, IconMessage, IconTelegram, IconVk, IconWhatsApp } from '../components/ShareGlyphs'
-import { IconHeart } from '../components/NavGlyphs'
+import { IconHeart, IconPencil, IconTrash } from '../components/NavGlyphs'
+import { useDeleteEvent } from '../features/organizer/queries'
+import { formatApiError } from '../lib/apiError'
+import { isCreatedByMe } from '../lib/eventInteractionStorage'
 import { useResolvedEventDetail } from '../features/catalog/useResolvedEventDetail'
 import { useSubmitComplaint } from '../features/notifications/queries'
 import {
@@ -89,6 +92,10 @@ export function EventDetailPage() {
   const [reportReason, setReportReason] = useState('spam')
   const [reportDetails, setReportDetails] = useState('')
   const [reportDone, setReportDone] = useState(false)
+  const [reviewReportId, setReviewReportId] = useState<string | null>(null)
+  const [reviewReportReason, setReviewReportReason] = useState('spam')
+  const [reviewReportDetails, setReviewReportDetails] = useState('')
+  const delEvent = useDeleteEvent()
   const [copyDone, setCopyDone] = useState(false)
   const copyResetTimerRef = useRef<number | undefined>(undefined)
 
@@ -131,8 +138,15 @@ export function EventDetailPage() {
     : isAxiosError(q.error) && q.error.response?.status === 404
 
   const eventEnded = d ? isEventPast(d.event_datetime) : false
-  const attended = going && eventEnded
-  const canReview = isAuthed && eventEnded && going && !myReview
+  const isOrganizer = Boolean(
+    isAuthed &&
+      authUser?.id != null &&
+      eventId &&
+      (d?.organizer_id === authUser.id || isCreatedByMe(eventId))
+  )
+  const attended = going && eventEnded && !isOrganizer
+  const canReview = isAuthed && eventEnded && going && !myReview && !isOrganizer
+  const numericEventId = eventId && /^\d+$/.test(eventId) ? Number(eventId) : null
 
   const shareUrl = useMemo(() => (eventId ? eventShareUrl(eventId) : ''), [eventId])
 
@@ -247,6 +261,15 @@ export function EventDetailPage() {
 
   const onToggleGoing = () => {
     if (!eventId || !requireAuth()) return
+    if (going) {
+      if (
+        !window.confirm(
+          'Отменить участие? Вы больше не будете отмечены как участник этого события.'
+        )
+      ) {
+        return
+      }
+    }
     setGoing(toggleParticipating(eventId))
   }
 
@@ -267,11 +290,10 @@ export function EventDetailPage() {
 
   const onSubmitReport = async (e: FormEvent) => {
     e.preventDefault()
-    const numericId = Number(eventId)
-    if (!Number.isFinite(numericId)) return
+    if (!numericEventId) return
     const reason = [reportReason, reportDetails.trim()].filter(Boolean).join(': ')
     try {
-      await submitComplaint.mutateAsync({ event_id: numericId, reason })
+      await submitComplaint.mutateAsync({ event_id: numericEventId, reason })
       setReportOpen(false)
       setReportDetails('')
       setReportDone(true)
@@ -281,10 +303,40 @@ export function EventDetailPage() {
     }
   }
 
+  const onSubmitReviewReport = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!numericEventId || !reviewReportId) return
+    const reason = [
+      `review:${reviewReportId}`,
+      reviewReportReason,
+      reviewReportDetails.trim(),
+    ]
+      .filter(Boolean)
+      .join(': ')
+    try {
+      await submitComplaint.mutateAsync({ event_id: numericEventId, reason })
+      setReviewReportId(null)
+      setReviewReportDetails('')
+      setReportDone(true)
+      window.setTimeout(() => setReportDone(false), 2400)
+    } catch {
+      setReportDone(false)
+    }
+  }
+
+  const onDeleteEvent = () => {
+    if (!numericEventId) return
+    if (!window.confirm('Вы уверены, что хотите удалить событие? Это действие нельзя отменить.')) {
+      return
+    }
+    delEvent.mutate(numericEventId, {
+      onSuccess: () => navigate('/my/organized'),
+      onError: (err) => window.alert(formatApiError(err, 'Не удалось удалить событие')),
+    })
+  }
+
   const chatDisplayName = authUser?.display_name?.trim() || getDemoUser().displayName || 'Гость'
-  const chatAsOrganizer = Boolean(
-    authUser?.id != null && d.organizer_id != null && d.organizer_id === authUser.id
-  )
+  const chatAsOrganizer = isOrganizer
 
   return (
     <div className="page eventDetailPage">
@@ -319,68 +371,122 @@ export function EventDetailPage() {
       </div>
 
       <section className="eventDetailActionsBar" aria-label="Действия">
-        <div className="eventDetailActionsPrimary">
-          {attended ? (
-            <button
-              type="button"
-              className="eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive eventDetailBtnToggleLocked"
-              disabled
-              aria-pressed="true"
-            >
-              Был(а) там
-            </button>
-          ) : eventEnded ? (
-            <button type="button" className="eventDetailBtn eventDetailBtnToggle" onClick={onToggleGoing}>
-              Отметить, что был(а)
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={going ? 'eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive' : 'eventDetailBtn eventDetailBtnToggle'}
-              onClick={onToggleGoing}
-            >
-              {going ? 'Вы идёте' : 'Пойду'}
-            </button>
-          )}
-          <button
-            type="button"
-            className={
-              fav
-                ? 'eventDetailBtnIcon eventDetailBtnFav active'
-                : 'eventDetailBtnIcon eventDetailBtnFav'
-            }
-            onClick={onToggleFav}
-            aria-label={fav ? 'Убрать из избранного' : 'В избранное'}
-            aria-pressed={fav}
-            title={fav ? 'В избранном' : 'В избранное'}
-          >
-            <IconHeart />
-          </button>
-        </div>
-        <div className="eventDetailActionsSecondary">
-          <button
-            type="button"
-            className="eventDetailBtn eventDetailBtnGhost"
-            onClick={() => {
-              if (requireAuth()) setChatOpen(true)
-            }}
-            title="Написать организатору"
-          >
-            <IconMessage />
-            <span className="eventDetailBtnGhostLabel">Написать</span>
-          </button>
-          <button
-            type="button"
-            className="eventDetailBtn eventDetailBtnGhost eventDetailBtnGhostDanger"
-            onClick={() => {
-              if (requireAuth()) setReportOpen(true)
-            }}
-            title="Пожаловаться"
-          >
-            <IconFlag />
-            <span className="eventDetailBtnGhostLabel">Жалоба</span>
-          </button>
-        </div>
+        {isOrganizer ? (
+          <>
+            <div className="eventDetailActionsPrimary eventDetailActionsOrganizer">
+              <button
+                type="button"
+                className="eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive eventDetailBtnOrganizerBadge"
+                disabled
+                aria-pressed="true"
+              >
+                Вы организатор
+              </button>
+            </div>
+            <div className="eventDetailActionsSecondary eventDetailActionsOrganizerRight">
+              <button
+                type="button"
+                className="eventDetailBtn eventDetailBtnGhost"
+                onClick={() => {
+                  if (requireAuth()) setChatOpen(true)
+                }}
+                title="Чат с участниками"
+              >
+                <IconMessage />
+                <span className="eventDetailBtnGhostLabel">Чат с участниками</span>
+              </button>
+              {numericEventId ? (
+                <Link
+                  className="eventDetailBtn eventDetailBtnIcon eventDetailBtnIconEdit"
+                  to={`/events/${eventId}/edit`}
+                  title="Редактировать"
+                  aria-label="Редактировать событие"
+                >
+                  <IconPencil />
+                </Link>
+              ) : null}
+              {numericEventId ? (
+                <button
+                  type="button"
+                  className="eventDetailBtn eventDetailBtnIcon eventDetailBtnIconDelete"
+                  disabled={delEvent.isPending}
+                  title="Удалить"
+                  aria-label="Удалить событие"
+                  onClick={onDeleteEvent}
+                >
+                  <IconTrash />
+                </button>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="eventDetailActionsPrimary">
+              {attended ? (
+                <button
+                  type="button"
+                  className="eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive eventDetailBtnToggleLocked"
+                  disabled
+                  aria-pressed="true"
+                >
+                  Был(а) там
+                </button>
+              ) : eventEnded ? (
+                <button type="button" className="eventDetailBtn eventDetailBtnToggle" onClick={onToggleGoing}>
+                  Отметить, что был(а)
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={
+                    going
+                      ? 'eventDetailBtn eventDetailBtnToggle eventDetailBtnToggleActive'
+                      : 'eventDetailBtn eventDetailBtnToggle'
+                  }
+                  onClick={onToggleGoing}
+                >
+                  {going ? 'Вы идёте' : 'Пойду'}
+                </button>
+              )}
+              <button
+                type="button"
+                className={
+                  fav ? 'eventDetailBtnIcon eventDetailBtnFav active' : 'eventDetailBtnIcon eventDetailBtnFav'
+                }
+                onClick={onToggleFav}
+                aria-label={fav ? 'Убрать из избранного' : 'В избранное'}
+                aria-pressed={fav}
+                title={fav ? 'В избранном' : 'В избранное'}
+              >
+                <IconHeart />
+              </button>
+            </div>
+            <div className="eventDetailActionsSecondary">
+              <button
+                type="button"
+                className="eventDetailBtn eventDetailBtnGhost"
+                onClick={() => {
+                  if (requireAuth()) setChatOpen(true)
+                }}
+                title="Написать организатору"
+              >
+                <IconMessage />
+                <span className="eventDetailBtnGhostLabel">Написать</span>
+              </button>
+              <button
+                type="button"
+                className="eventDetailBtn eventDetailBtnGhost eventDetailBtnGhostDanger"
+                onClick={() => {
+                  if (requireAuth()) setReportOpen(true)
+                }}
+                title="Пожаловаться"
+              >
+                <IconFlag />
+                <span className="eventDetailBtnGhostLabel">Жалоба</span>
+              </button>
+            </div>
+          </>
+        )}
         {reportDone ? <span className="eventDetailMuted eventDetailActionsHint">Жалоба отправлена</span> : null}
       </section>
 
@@ -442,16 +548,18 @@ export function EventDetailPage() {
             {d.organizer_name}
           </p>
           <p className="eventDetailMuted">Участников: {d.participants_count}</p>
-          <button
-            type="button"
-            className="eventDetailBtn"
-            style={{ marginTop: 10 }}
-            onClick={() => {
-              if (requireAuth()) setChatOpen(true)
-            }}
-          >
-            Чат с организатором
-          </button>
+          {!isOrganizer ? (
+            <button
+              type="button"
+              className="eventDetailBtn"
+              style={{ marginTop: 10 }}
+              onClick={() => {
+                if (requireAuth()) setChatOpen(true)
+              }}
+            >
+              Чат с организатором
+            </button>
+          ) : null}
         </section>
 
         <section className="eventDetailPanel eventDetailPanelCompact eventDetailGridShare" aria-labelledby="event-share">
@@ -459,15 +567,22 @@ export function EventDetailPage() {
             Поделиться
           </h2>
           <div className="eventDetailShareRow">
-            <button
-              type="button"
-              className={copyDone ? 'eventDetailShareBtn isCopied' : 'eventDetailShareBtn'}
-              onClick={onCopyLink}
-              aria-label={copyDone ? 'Ссылка скопирована' : 'Скопировать ссылку'}
-              title={copyDone ? 'Скопировано' : 'Скопировать ссылку'}
-            >
-              <IconLink />
-            </button>
+            <div className="eventDetailShareCopyWrap">
+              <button
+                type="button"
+                className={copyDone ? 'eventDetailShareBtn isCopied' : 'eventDetailShareBtn'}
+                onClick={onCopyLink}
+                aria-label={copyDone ? 'Ссылка скопирована' : 'Скопировать ссылку'}
+                title="Скопировать ссылку"
+              >
+                <IconLink />
+              </button>
+              {copyDone ? (
+                <span className="eventDetailCopyToast" role="status">
+                  Скопировано
+                </span>
+              ) : null}
+            </div>
             <a
               className="eventDetailShareBtn eventDetailShareBtnVk"
               href={vkShare}
@@ -523,9 +638,28 @@ export function EventDetailPage() {
           {reviews.length > 0 ? (
             <div className="eventDetailReviewsList" key={`${reviewTick}-${reviewSort}`}>
               {sortedReviews.map((r) => (
-                  <div key={r.id} className="eventDetailChatMsg">
-                    <div className="eventDetailChatAuthor">
-                      {r.author} · ★ {r.rating} · {new Date(r.at).toLocaleString('ru-RU')}
+                  <div key={r.id} className="eventDetailReviewItem">
+                    <div className="eventDetailReviewItemHead">
+                      <div className="eventDetailChatAuthor">
+                        {r.author} · ★ {r.rating} · {new Date(r.at).toLocaleString('ru-RU')}
+                      </div>
+                      {isOrganizer && numericEventId ? (
+                        <button
+                          type="button"
+                          className="eventDetailReviewReportBtn"
+                          title="Пожаловаться на отзыв"
+                          aria-label="Пожаловаться на отзыв"
+                          onClick={() => {
+                            if (requireAuth()) {
+                              setReviewReportReason('spam')
+                              setReviewReportDetails('')
+                              setReviewReportId(r.id)
+                            }
+                          }}
+                        >
+                          <IconFlag />
+                        </button>
+                      ) : null}
                     </div>
                     <p className="eventDetailChatText">{r.text}</p>
                   </div>
@@ -597,6 +731,11 @@ export function EventDetailPage() {
               </form>
               )}
             </>
+          ) : isOrganizer ? (
+            <p className="eventDetailMuted" style={{ marginTop: 10 }}>
+              Как организатор вы не можете оставить отзыв на своё мероприятие. При необходимости пожалуйтесь на
+              некорректные отзывы участников — кнопка у каждого отзыва.
+            </p>
           ) : !myReview ? (
             <p className="eventDetailMuted" style={{ marginTop: 10 }}>
               {!isAuthed
@@ -619,6 +758,68 @@ export function EventDetailPage() {
         displayName={chatDisplayName}
         asOrganizer={chatAsOrganizer}
       />
+
+      {reviewReportId ? (
+        <div
+          className="eventDetailModalBackdrop"
+          role="presentation"
+          onMouseDown={() => setReviewReportId(null)}
+        >
+          <div
+            className="eventDetailModal"
+            role="dialog"
+            aria-modal
+            aria-labelledby="review-report-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="eventDetailModalHead">
+              <h2 id="review-report-title" className="eventDetailModalTitle">
+                Пожаловаться на отзыв
+              </h2>
+              <button
+                type="button"
+                className="mobileSheetClose"
+                onClick={() => setReviewReportId(null)}
+                aria-label="Закрыть"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={onSubmitReviewReport}>
+              <div className="searchGroup eventDetailDropdownGroup" style={{ marginBottom: 10 }}>
+                <span className="label">Причина</span>
+                <PointDropdown
+                  variant="light"
+                  ariaLabel="Причина жалобы на отзыв"
+                  options={[...REPORT_REASON_OPTIONS]}
+                  value={reviewReportReason}
+                  onChange={setReviewReportReason}
+                />
+              </div>
+              <div className="searchGroup" style={{ marginBottom: 12 }}>
+                <label className="label" htmlFor="review-report-details">
+                  Комментарий
+                </label>
+                <textarea
+                  id="review-report-details"
+                  className="input"
+                  style={{ minHeight: 110 }}
+                  value={reviewReportDetails}
+                  onChange={(e) => setReviewReportDetails(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button type="button" className="eventDetailBtn" onClick={() => setReviewReportId(null)}>
+                  Отмена
+                </button>
+                <button type="submit" className="eventDetailBtn eventDetailBtnPrimary">
+                  Отправить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       {reportOpen ? (
         <div className="eventDetailModalBackdrop" role="presentation" onMouseDown={() => setReportOpen(false)}>

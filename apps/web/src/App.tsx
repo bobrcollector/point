@@ -16,6 +16,7 @@ import {
   IconUser,
 } from './components/NavGlyphs'
 import { BrandLogo } from './components/BrandLogo'
+import { HomeCitySelect } from './components/HomeCitySelect'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SidebarCitySelect } from './components/SidebarCitySelect'
 import { useQueryClient } from '@tanstack/react-query'
@@ -93,6 +94,16 @@ const FOOTER_NAV: NavDef[] = [
 ]
 
 const PROFILE_PATHS = new Set(['/account', '/settings', '/login'])
+
+/** Город и логотип на мобильных (сайдбар скрыт). На главной скрывается — город в тулбаре. */
+function MobileTopBar() {
+  return (
+    <header className="mobileTopBar" aria-label="Город">
+      <BrandLogo />
+      <HomeCitySelect />
+    </header>
+  )
+}
 
 function EventDetailRoute() {
   const { eventId } = useParams()
@@ -385,6 +396,7 @@ export default function App() {
 
       <main className="main">
         <ScrollToTop />
+        <MobileTopBar />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/events/:eventId" element={<EventDetailRoute />} />

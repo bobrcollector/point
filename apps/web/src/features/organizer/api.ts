@@ -101,6 +101,11 @@ export async function publishOrganizerEvent(eventId: number): Promise<OrganizerE
   return res.data
 }
 
+export async function finishOrganizerEvent(eventId: number): Promise<OrganizerEventDetail> {
+  const res = await api.post<OrganizerEventDetail>(`/api/v1/organizer/events/${eventId}/finish`)
+  return res.data
+}
+
 export async function uploadEventImage(file: File): Promise<string> {
   const prepared = await resizeImageForUpload(file)
   const form = new FormData()

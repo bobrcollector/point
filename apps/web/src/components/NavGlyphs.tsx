@@ -207,3 +207,34 @@ export function IconX(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function IconPencil(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} width={18} height={18} {...props}>
+      <path
+        d="M12 20H20M15.5 4.5L19.5 8.5L8 20H4V16L15.5 4.5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function IconTrash(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} width={18} height={18} {...props}>
+      <path d="M4 7H20M9 7V5H15V7M8 11V17M12 11V17M16 11V17M6 7L7 20H17L18 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function IconCheckCircle(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} width={18} height={18} {...props}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M8 12L11 15L16 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}

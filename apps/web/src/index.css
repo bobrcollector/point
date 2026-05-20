@@ -1,3 +1,5 @@
+@import './styles/mobile.css';
+
 :root {
   --bg: #f7f7fb;
   --panel: #ffffff;
@@ -2375,6 +2377,10 @@ button.mapEventCardGhost {
 }
 
 /* Смартфоны: полная ширина контента и нижняя навигация */
+.mobileTopBar {
+  display: none;
+}
+
 .mobileTabBar {
   display: none;
 }
@@ -3061,6 +3067,94 @@ button.mapEventCardGhost {
   background: rgba(109, 40, 217, 0.1);
   border-color: rgba(109, 40, 217, 0.22);
   color: rgba(76, 29, 149, 0.9);
+}
+
+.eventDetailBtnOrganizerBadge {
+  cursor: default;
+  min-width: 140px;
+}
+
+.eventDetailActionsOrganizer {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.eventDetailActionsOrganizerRight {
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.eventDetailBtnIconEdit {
+  color: var(--primary-2);
+  border-color: rgba(109, 40, 217, 0.35);
+  background: rgba(109, 40, 217, 0.1);
+  text-decoration: none;
+}
+
+.eventDetailBtnIconEdit:hover {
+  color: #fff;
+  border-color: rgba(109, 40, 217, 0.5);
+  background: linear-gradient(135deg, rgba(109, 40, 217, 0.95), rgba(76, 29, 149, 0.95));
+}
+
+.eventDetailBtnIconDelete {
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.eventDetailBtnIconDelete:hover {
+  color: #fff;
+  border-color: rgba(220, 38, 38, 0.5);
+  background: rgba(220, 38, 38, 0.92);
+}
+
+.eventDetailBtnIconDelete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.eventDetailReviewItem {
+  padding-bottom: 4px;
+}
+
+.eventDetailReviewItemHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.eventDetailReviewReportBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.eventDetailReviewReportBtn:hover {
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.35);
+  background: rgba(185, 28, 28, 0.06);
+}
+
+.eventDetailReviewReportBtn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .eventDetailBtnToggleActive {
@@ -3899,7 +3993,27 @@ button.mapEventCardGhost {
 /* Organizer event management module */
 .eventManagePage { max-width: 980px; width: 100%; margin: 0 auto; padding: 18px 18px 40px; }
 .eventWizardSteps { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.eventWizardStep { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); cursor: pointer; font: inherit; color: var(--muted); }
+.eventWizardStep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  cursor: pointer;
+  font: inherit;
+  color: var(--muted);
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+.eventWizardStep:hover {
+  border-color: rgba(109, 40, 217, 0.28);
+  color: var(--text);
+  background: rgba(109, 40, 217, 0.04);
+}
 .eventWizardStep.active { border-color: rgba(109, 40, 217, 0.35); color: var(--text); box-shadow: var(--ring); }
 .eventWizardStep.done { color: var(--text); }
 .eventWizardStepNum { width: 22px; height: 22px; border-radius: 999px; background: rgba(109, 40, 217, 0.12); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
@@ -3921,6 +4035,109 @@ button.mapEventCardGhost {
 .eventWizardGalleryItem .eventDetailGalleryBtn { min-height: 88px; }
 .eventWizardTicketRow { display: grid; grid-template-columns: 1fr 100px 90px 40px; gap: 8px; margin-bottom: 8px; }
 .eventListCardActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.organizerEventCard {
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.organizerEventCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+}
+
+.organizerEventCard:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.organizerEventCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.organizerEventCardError {
+  width: 100%;
+  margin: 0;
+}
+
+.organizerEventCardFinishBtn {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.organizerEventCardIconRow {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.organizerEventCardIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.organizerEventCardIconBtn:hover {
+  color: var(--primary-2);
+  border-color: rgba(109, 40, 217, 0.35);
+  background: rgba(109, 40, 217, 0.06);
+}
+
+.organizerEventCardIconBtnDanger:hover {
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.35);
+  background: rgba(185, 28, 28, 0.06);
+}
+
+.eventDetailShareCopyWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.eventDetailCopyToast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+  animation: eventDetailCopyToastIn 0.2s ease;
+}
+
+@keyframes eventDetailCopyToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
 .myEventsPage .myEventsHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 @media (max-width: 640px) { .eventWizardTicketRow, .eventTimeRow, .profileTypePicker { grid-template-columns: 1fr; } }
 

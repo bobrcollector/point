@@ -147,6 +147,11 @@ export function EventManagePage({ mode }: Props) {
     setStep((s) => Math.max(s - 1, 0))
   }
 
+  const goToStep = (index: number) => {
+    setError(null)
+    setStep(Math.max(0, Math.min(index, STEPS.length - 1)))
+  }
+
   const applyMapCoordinates = async (lat: number, lon: number) => {
     patch({ latitude: lat, longitude: lon })
     geocodeAbortRef.current?.abort()
@@ -268,10 +273,10 @@ export function EventManagePage({ mode }: Props) {
             type="button"
             role="tab"
             aria-selected={step === i}
-            className={step === i ? 'eventWizardStep active' : step > i ? 'eventWizardStep done' : 'eventWizardStep'}
-            onClick={() => {
-              if (i < step) setStep(i)
-            }}
+            className={
+              step === i ? 'eventWizardStep active' : step > i ? 'eventWizardStep done' : 'eventWizardStep'
+            }
+            onClick={() => goToStep(i)}
           >
             <span className="eventWizardStepNum">{i + 1}</span>
             <span className="eventWizardStepLabel">{label}</span>

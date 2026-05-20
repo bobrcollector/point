@@ -1,0 +1,511 @@
+/**
+ * Mobile layout (≤720px) — complements index.css breakpoint.
+ * Sidebar hidden; bottom tab bar + these rules apply.
+ */
+
+@media (max-width: 720px) {
+  .mobileTopBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+  }
+
+  .mobileTopBar .brandLogo {
+    width: 28px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+
+  .mobileTopBar .homeCityDropdown {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+
+  /* На главной город уже в тулбаре */
+  .homePage .mobileTopBar {
+    display: none;
+  }
+
+  .pageTitle {
+    font-size: 22px;
+    line-height: 1.15;
+  }
+
+  .pageSub {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .page,
+  .homePage {
+    gap: 14px;
+  }
+
+  .homeShell {
+    width: 100%;
+  }
+
+  /* ——— Событие ——— */
+  .eventDetailPage {
+    padding: 0 0 28px;
+  }
+
+  .eventDetailHeroMain {
+    min-height: clamp(160px, 38vw, 200px);
+  }
+
+  .eventDetailHeroContent {
+    padding: 14px 14px 12px;
+  }
+
+  .eventDetailTitle {
+    font-size: 22px;
+  }
+
+  .eventDetailGallery {
+    grid-template-columns: repeat(auto-fill, 56px);
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .eventDetailGalleryBtn {
+    width: 56px;
+    height: 56px;
+  }
+
+  .eventDetailActionsBar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .eventDetailActionsPrimary,
+  .eventDetailActionsSecondary,
+  .eventDetailActionsOrganizer,
+  .eventDetailActionsOrganizerRight {
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .eventDetailBtnOrganizerBadge {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .eventDetailOrganizerChatBtn {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .eventDetailBtnGhost {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .eventDetailBtnIcon,
+  .eventDetailBtnIconEdit,
+  .eventDetailBtnIconDelete {
+    width: 48px;
+    height: 48px;
+  }
+
+  .eventDetailActionsOrganizerRight {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .eventDetailActionsOrganizerRight .eventDetailBtnGhost {
+    flex: 1 1 100%;
+    order: -1;
+  }
+
+  .eventDetailInfoGrid {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .eventDetailInfoGrid > .eventDetailPanel {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .eventDetailReviewsHead {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .eventDetailReviewsDropdown {
+    width: 100%;
+  }
+
+  .eventDetailShareRow {
+    justify-content: flex-start;
+  }
+
+  /* Модалки и чат на весь экран снизу */
+  .eventDetailModalBackdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .eventDetailModal {
+    width: 100%;
+    max-height: min(92dvh, 100%);
+    border-radius: 20px 20px 0 0;
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .eventDetailModalBackdrop:has(.organizerChatPanel) {
+    align-items: stretch;
+  }
+
+  .organizerChatPanel {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    height: min(100dvh, 100%);
+    min-height: min(100dvh, 100%);
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .organizerChatMessages {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .photoLightboxBackdrop {
+    padding: 8px;
+  }
+
+  .photoLightboxNavPrev {
+    left: 4px;
+  }
+
+  .photoLightboxNavNext {
+    right: 4px;
+  }
+
+  .photoLightboxClose {
+    top: 8px;
+    right: 8px;
+  }
+
+  /* ——— Создание / редактирование ——— */
+  .eventManagePage {
+    padding: 0 0 28px;
+  }
+
+  .eventManagePage .pageHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .eventManagePage .pageHeader > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .eventManagePage .pageHeader .eventDetailBtn,
+  .eventManagePage .pageHeader .homeGhostBtn {
+    flex: 1 1 auto;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .eventWizardSteps {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .eventWizardSteps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .eventWizardStep {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+  }
+
+  .eventWizardStepLabel {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .eventWizardPanel {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .eventWizardMap {
+    min-height: 260px;
+  }
+
+  .eventWizardNav {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .eventWizardNav .eventDetailBtn,
+  .eventWizardNav .homePrimaryBtn {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+  }
+
+  .homeFilterCategoryGroups {
+    max-height: none;
+  }
+
+  /* ——— Мои события ——— */
+  .myEventsPage {
+    padding: 0 0 28px;
+  }
+
+  .myEventsHeader {
+    margin-bottom: 4px;
+  }
+
+  .myEventsTitle {
+    font-size: 24px;
+  }
+
+  .myEventsToolbar {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .myEventsSubnav {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .myEventsSubnavLink,
+  .myEventsSubnav button.myEventsSubnavLink {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .myEventsCreateFab {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+  }
+
+  .myEventsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .organizerEventCardActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .organizerEventCardIconRow {
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .mapEventCardBtn,
+  .organizerEventCardFinishBtn {
+    width: 100%;
+  }
+
+  /* ——— Авторизация и профиль ——— */
+  .authPage {
+    padding: 0;
+    max-width: none;
+  }
+
+  .authCard {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .authTitle {
+    font-size: 20px;
+  }
+
+  .accountPage,
+  .settingsPage {
+    padding: 0;
+  }
+
+  .accountHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .accountHeader .homePrimaryBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .profileViewHero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profileViewName {
+    font-size: 20px;
+  }
+
+  .profileViewAvatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .accountSection,
+  .profileViewCard {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .interestGrid .pill {
+    width: auto;
+    min-height: 44px;
+  }
+
+  /* ——— Админка и уведомления ——— */
+  .adminPage,
+  .notificationsPage {
+    padding: 0;
+  }
+
+  .adminTabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .adminTabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .adminTabs .pill {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 40px;
+    white-space: nowrap;
+  }
+
+  .adminMetricsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adminChartsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .adminCard {
+    padding: 14px;
+  }
+
+  .adminCardHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .adminCardBtns {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .adminCardBtns .eventDetailBtn,
+  .adminCardBtns .homePrimaryBtn,
+  .adminCardBtns .homeGhostBtn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .adminFilters .pill {
+    width: auto;
+    min-width: 0;
+  }
+
+  .notifRow {
+    padding: 12px 14px;
+  }
+
+  /* ——— Карточки ленты ——— */
+  .card,
+  .eventListCard {
+    border-radius: 18px;
+  }
+
+  .cardInner .cardBody {
+    padding: 12px 14px 14px;
+  }
+
+  /* ——— Карта: тулбар ——— */
+  .homeToolbarSeg {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .homeToolbarSeg .segBtn {
+    flex: 1;
+  }
+
+  .homeFilterPanel {
+    padding-top: 12px;
+  }
+
+  .homeFilterGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .segmented {
+    width: 100%;
+  }
+
+  .segBtn {
+    min-height: 44px;
+  }
+
+  /* Тач-цели */
+  .eventDetailBtn,
+  .homePrimaryBtn,
+  .homeGhostBtn,
+  .navItem,
+  button.pill {
+    min-height: 44px;
+  }
+
+  .eventDetailBtnToggle,
+  .eventDetailBtnIcon {
+    min-height: 44px;
+  }
+}

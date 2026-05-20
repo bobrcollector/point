@@ -8,7 +8,7 @@ function NotificationsContent() {
   const markRead = useMarkNotificationRead()
 
   return (
-    <div className="page">
+    <div className="page notificationsPage">
       <div className="pageHeader">
         <div>
           <div className="pageTitle">Уведомления</div>

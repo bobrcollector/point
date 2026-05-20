@@ -205,3 +205,19 @@ async def publish_event(session: AsyncSession, organizer_id: int, event_id: int)
     ev.updated_at = now
     await session.flush()
     return ev
+
+
+async def finish_event(session: AsyncSession, organizer_id: int, event_id: int) -> Event:
+    ev = await get_organizer_event(session, organizer_id, event_id)
+    if ev.status not in ("approved", "pending"):
+        raise HTTPException(
+            status_code=400,
+            detail="Завершить можно только опубликованное или ожидающее модерации событие",
+        )
+    now = datetime.now(timezone.utc)
+    ev.status = "cancelled"
+    ev.is_hidden = True
+    ev.updated_at = now
+    await session.flush()
+    await session.refresh(ev, ["categories", "ticket_types"])
+    return ev

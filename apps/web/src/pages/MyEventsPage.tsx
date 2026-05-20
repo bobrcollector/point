@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { formatApiError } from '../lib/apiError'
 import { EventListCard, type EventListCardData } from '../components/EventListCard'
-import { IconPlusSquare } from '../components/NavGlyphs'
+import { IconPencil, IconPlusSquare, IconTrash } from '../components/NavGlyphs'
 import { readCreatedEventIds, readParticipatingIds } from '../lib/eventInteractionStorage'
 import { useStoredEventCards, type StoredEventCard } from '../features/catalog/queries'
-import { useDeleteEvent, useMyOrganizerEvents, usePublishEvent } from '../features/organizer/queries'
+import { useDeleteEvent, useFinishEvent, useMyOrganizerEvents, usePublishEvent } from '../features/organizer/queries'
 import type { OrganizerEventListItem } from '../features/organizer/types'
 
 export const MY_EVENTS_SUBNAV = [
@@ -98,32 +98,86 @@ function StoredCardsGrid({ cards }: { cards: StoredEventCard[] }) {
   )
 }
 
+function stopCardNav(e: MouseEvent | KeyboardEvent) {
+  e.stopPropagation()
+}
+
 function OrganizerCard({ event, onDeleted }: { event: OrganizerEventListItem; onDeleted: () => void }) {
   const navigate = useNavigate()
   const del = useDeleteEvent()
   const publish = usePublishEvent()
+  const finish = useFinishEvent()
   const [publishError, setPublishError] = useState<string | null>(null)
+  const [finishError, setFinishError] = useState<string | null>(null)
   const dt = new Date(event.event_datetime)
   const isPast = dt.getTime() < Date.now()
+  const canFinish = (event.status === 'approved' || event.status === 'pending') && !isPast
 
-  const onPublish = () => {
+  const openEvent = () => {
+    if (event.status === 'draft') {
+      navigate(`/events/${event.event_id}/edit`)
+      return
+    }
+    navigate(`/events/${event.event_id}`, { state: { from: '/my/organized', label: '← Организую' } })
+  }
+
+  const onCardKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      openEvent()
+    }
+  }
+
+  const onPublish = (e: MouseEvent) => {
+    stopCardNav(e)
     setPublishError(null)
     publish.mutate(event.event_id, {
       onSuccess: () => {
         onDeleted()
         navigate(`/events/${event.event_id}`, { state: { from: '/my/organized', label: '← Организую' } })
       },
-      onError: (err) => setPublishError(formatApiError(err, 'Не удалось опубликовать'))
+      onError: (err) => setPublishError(formatApiError(err, 'Не удалось опубликовать')),
     })
   }
 
+  const onFinish = (e: MouseEvent) => {
+    stopCardNav(e)
+    if (
+      !window.confirm(
+        'Завершить событие? Оно будет снято с публикации и перестанет отображаться в каталоге.'
+      )
+    ) {
+      return
+    }
+    setFinishError(null)
+    finish.mutate(event.event_id, {
+      onSuccess: onDeleted,
+      onError: (err) => setFinishError(formatApiError(err, 'Не удалось завершить событие')),
+    })
+  }
+
+  const onDelete = (e: MouseEvent) => {
+    stopCardNav(e)
+    if (!window.confirm('Вы уверены, что хотите удалить событие? Это действие нельзя отменить.')) {
+      return
+    }
+    del.mutate(event.event_id, { onSuccess: onDeleted })
+  }
+
   return (
-    <article className="card cardInner eventListCard">
+    <article
+      className="card cardInner eventListCard organizerEventCard"
+      role="button"
+      tabIndex={0}
+      onClick={openEvent}
+      onKeyDown={onCardKeyDown}
+      aria-label={`Открыть: ${event.title}`}
+    >
       <div
         className="cardCover"
         style={{
           backgroundImage: event.cover_image_url ? `url(${event.cover_image_url})` : undefined,
-          position: 'relative'
+          position: 'relative',
         }}
       >
         <div className="cardCoverOverlay" />
@@ -145,12 +199,8 @@ function OrganizerCard({ event, onDeleted }: { event: OrganizerEventListItem; on
         <div className="cardPrice">
           {event.price === 0 ? 'Бесплатно' : `от ${event.price} ₽`} · билетов: {event.ticket_types_count}
         </div>
-        <div className="eventListCardActions">
-          {event.status === 'approved' ? (
-            <Link className="mapEventCardBtn" to={`/events/${event.event_id}`}>
-              Открыть
-            </Link>
-          ) : event.status === 'draft' ? (
+        <div className="organizerEventCardActions" onClick={stopCardNav} onKeyDown={stopCardNav}>
+          {event.status === 'draft' ? (
             <button
               type="button"
               className="mapEventCardBtn"
@@ -160,26 +210,39 @@ function OrganizerCard({ event, onDeleted }: { event: OrganizerEventListItem; on
               {publish.isPending ? 'Публикация…' : 'Опубликовать'}
             </button>
           ) : null}
-          {publishError ? (
-            <span className="pageSub" style={{ width: '100%' }}>
-              {publishError}
-            </span>
+          {canFinish ? (
+            <button
+              type="button"
+              className="mapEventCardBtn organizerEventCardFinishBtn"
+              disabled={finish.isPending}
+              onClick={onFinish}
+            >
+              {finish.isPending ? 'Завершение…' : 'Завершить'}
+            </button>
           ) : null}
-          <Link className="eventDetailBtn" to={`/events/${event.event_id}/edit`}>
-            Редактировать
-          </Link>
-          <button
-            type="button"
-            className="eventDetailBtn eventDetailBtnDanger"
-            disabled={del.isPending}
-            onClick={() => {
-              if (window.confirm('Удалить событие?')) {
-                del.mutate(event.event_id, { onSuccess: onDeleted })
-              }
-            }}
-          >
-            Удалить
-          </button>
+          {publishError ? <span className="pageSub organizerEventCardError">{publishError}</span> : null}
+          {finishError ? <span className="pageSub organizerEventCardError">{finishError}</span> : null}
+          <div className="organizerEventCardIconRow">
+            <Link
+              className="organizerEventCardIconBtn"
+              to={`/events/${event.event_id}/edit`}
+              title="Редактировать"
+              aria-label="Редактировать"
+              onClick={stopCardNav}
+            >
+              <IconPencil />
+            </Link>
+            <button
+              type="button"
+              className="organizerEventCardIconBtn organizerEventCardIconBtnDanger"
+              disabled={del.isPending}
+              title="Удалить"
+              aria-label="Удалить"
+              onClick={onDelete}
+            >
+              <IconTrash />
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -212,8 +275,8 @@ export function MyEventsPage() {
         dr.push(e)
         continue
       }
-      if (new Date(e.event_datetime).getTime() >= now) up.push(e)
-      else pa.push(e)
+      if (e.status === 'cancelled' || new Date(e.event_datetime).getTime() < now) pa.push(e)
+      else up.push(e)
     }
     return { drafts: dr, upcoming: up, past: pa }
   }, [organizerQuery.data])

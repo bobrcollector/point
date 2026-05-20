@@ -81,10 +81,10 @@ export function OrganizerChatPanel({
         <div className="eventDetailModalHead">
           <div>
             <h2 id="organizer-chat-title" className="eventDetailModalTitle">
-              {asOrganizer ? 'Чат по вашему событию' : 'Чат с организатором'}
+              {asOrganizer ? 'Чат с участниками' : 'Чат с организатором'}
             </h2>
             <p className="eventDetailMuted" style={{ margin: '4px 0 0' }}>
-              {asOrganizer ? `${organizerName} · вы как организатор` : organizerName}
+              {asOrganizer ? 'Общение с участниками вашего события' : organizerName}
               {statusLabel ? (
                 <>
                   {' · '}
