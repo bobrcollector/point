@@ -6,8 +6,12 @@
   ],
   "scripts": {
     "dev:web": "npm --workspace apps/web run dev",
+    "dev:web:lan": "npm --workspace apps/web run dev:lan",
+    "dev:web:pwa:lan": "npm --workspace apps/web run dev:pwa:lan",
     "dev:api": "node scripts/dev-api.mjs",
+    "dev:api:lan": "cross-env POINT_API_HOST=0.0.0.0 node scripts/dev-api.mjs",
     "dev:all": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:all:lan": "concurrently -n api,web -c cyan,magenta \"npm run dev:api:lan\" \"npm run dev:web:pwa:lan\"",
     "db:up": "docker compose -f infra/docker-compose.yml --env-file infra/.env up -d",
     "db:wait": "node scripts/wait-db.mjs",
     "db:migrate": "node scripts/ensure-api-env.mjs && node scripts/wait-db.mjs && node scripts/run-python.mjs -m alembic upgrade head",
@@ -16,10 +20,12 @@
     "db:reset": "docker compose -f infra/docker-compose.yml --env-file infra/.env down -v && node scripts/setup-db.mjs",
     "setup:db": "node scripts/setup-db.mjs",
     "build:web": "npm --workspace apps/web run build",
+    "preview:web:lan": "npm --workspace apps/web run preview:lan",
     "lint:web": "npm --workspace apps/web run lint"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0"
+    "concurrently": "^9.2.0",
+    "cross-env": "^7.0.3"
   }
 }
 

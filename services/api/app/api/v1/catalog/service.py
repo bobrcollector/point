@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -63,6 +63,14 @@ def parse_category_ids(raw: str | None) -> set[int] | None:
     return out or None
 
 
+def event_datetime_utc(ev: Event) -> datetime:
+    """Нормализует время события к UTC для сравнения с «сейчас»."""
+    dt = ev.event_datetime
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def parse_iso_datetime(raw: str | None) -> datetime | None:
     if not raw or not raw.strip():
         return None
@@ -119,8 +127,11 @@ def filter_and_sort_events(
 ) -> list[tuple[Event, int | None]]:
     scored: list[tuple[Event, int | None]] = []
     has_geo = lat is not None and lon is not None
+    now_utc = datetime.now(timezone.utc)
 
     for ev in rows:
+        if event_datetime_utc(ev) < now_utc:
+            continue
         if category_ids is not None:
             ev_cats = {c.id for c in ev.categories}
             if ev_cats.isdisjoint(category_ids):
@@ -200,6 +211,7 @@ def event_to_detail_dict(ev: Event) -> dict[str, object]:
         {
             "description": ev.description,
             "address_detail": ev.address_detail,
+            "organizer_id": int(ev.organizer_id),
             "organizer_name": ev.organizer_name,
             "gallery_urls": [u for u in urls if u],
             "participants_count": int(ev.participants_count),

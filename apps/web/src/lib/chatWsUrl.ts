@@ -1,10 +1,16 @@
 import { env } from './env'
 
-export function chatWebSocketUrl(eventId: string, displayName: string, organizerName: string): string {
+export function chatWebSocketUrl(
+  eventId: string,
+  displayName: string,
+  organizerName: string,
+  asOrganizer = false
+): string {
   const params = new URLSearchParams({
     display_name: displayName,
     organizer_name: organizerName,
   })
+  if (asOrganizer) params.set('as_organizer', 'true')
   const path = `/api/v1/chat/ws/${encodeURIComponent(eventId)}?${params.toString()}`
 
   const base = env().API_BASE_URL

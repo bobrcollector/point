@@ -23,7 +23,7 @@ if (!fs.existsSync(py)) {
 
 const child = spawn(
   py,
-  ['-m', 'uvicorn', 'app.main:app', '--reload', '--host', '127.0.0.1', '--port', '8000'],
+  ['-m', 'uvicorn', 'app.main:app', '--reload', '--host', process.env.POINT_API_HOST ?? '127.0.0.1', '--port', process.env.POINT_API_PORT ?? '8000'],
   { cwd: apiDir, stdio: 'inherit', env: process.env }
 )
 child.on('exit', (code) => process.exit(code ?? 1))

@@ -1,16 +1,33 @@
 import { isAxiosError } from 'axios'
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthFormLayout } from '../components/AuthFormLayout'
-import { useLogin } from '../features/auth/queries'
+import { useLogin, useMe } from '../features/auth/queries'
+import { useAuthStore } from '../stores/authStore'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  const meQ = useMe(Boolean(token))
   const login = useLogin()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const from = (location.state as { from?: string } | null)?.from ?? '/account'
+  const fromRaw = (location.state as { from?: string } | null)?.from
+  const from = fromRaw && fromRaw !== '/login' && fromRaw !== '/register' ? fromRaw : '/'
+
+  const profile = user ?? meQ.data
+  if (token && profile) {
+    return <Navigate to={from} replace />
+  }
+  if (token && meQ.isPending) {
+    return (
+      <div className="page authPage">
+        <p className="pageSub">Загрузка сессии…</p>
+      </div>
+    )
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()

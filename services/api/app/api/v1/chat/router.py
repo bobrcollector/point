@@ -21,6 +21,7 @@ async def chat_websocket(
     event_id: str,
     display_name: str = Query(default="Гость"),
     organizer_name: str = Query(default="Организатор"),
+    as_organizer: bool = Query(default=False),
 ):
     name = (display_name or "Гость").strip()[:120] or "Гость"
     org = (organizer_name or "Организатор").strip()[:120] or "Организатор"
@@ -40,11 +41,12 @@ async def chat_websocket(
                 await websocket.send_json(ErrorPayload(detail="Неверный формат сообщения").model_dump())
                 continue
 
+            role = "organizer" if as_organizer else "participant"
             row = chat_store.add_message(
                 room,
                 author=name,
                 text=payload.text,
-                role="participant",
+                role=role,
             )
             await chat_manager.broadcast_message(room, MessagePayload(message=row))
     except WebSocketDisconnect:

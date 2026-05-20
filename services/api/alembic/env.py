@@ -73,8 +73,7 @@ def run_migrations_online_sync() -> None:
 
 
 def run_migrations_online() -> None:
-    # Синхронный psycopg стабильнее asyncpg при миграциях (особенно на Windows).
-    run_migrations_online_sync()
+    asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

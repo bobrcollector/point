@@ -8,6 +8,8 @@ type Options = {
   eventId: string
   organizerName: string
   displayName: string
+  /** Текущий пользователь — владелец события (пишем с ролью организатора). */
+  asOrganizer: boolean
   enabled: boolean
 }
 
@@ -16,7 +18,7 @@ function parseServerEvent(raw: unknown): ChatServerEvent | null {
   return raw as ChatServerEvent
 }
 
-export function useOrganizerChat({ eventId, organizerName, displayName, enabled }: Options) {
+export function useOrganizerChat({ eventId, organizerName, displayName, asOrganizer, enabled }: Options) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [status, setStatus] = useState<ChatConnectionStatus>('idle')
   const wsRef = useRef<WebSocket | null>(null)
@@ -31,7 +33,7 @@ export function useOrganizerChat({ eventId, organizerName, displayName, enabled 
     }
 
     setStatus('connecting')
-    const url = chatWebSocketUrl(eventId, displayName, organizerName)
+    const url = chatWebSocketUrl(eventId, displayName, organizerName, asOrganizer)
     const ws = new WebSocket(url)
     wsRef.current = ws
 
@@ -70,7 +72,7 @@ export function useOrganizerChat({ eventId, organizerName, displayName, enabled 
       ws.close()
       if (wsRef.current === ws) wsRef.current = null
     }
-  }, [enabled, eventId, displayName, organizerName])
+  }, [enabled, eventId, displayName, organizerName, asOrganizer])
 
   const send = useCallback((text: string) => {
     const trimmed = text.trim()

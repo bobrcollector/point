@@ -118,6 +118,8 @@ export function EventDetailPage() {
 
   const sortedReviews = useMemo(() => sortReviews(reviews, reviewSort), [reviews, reviewSort])
 
+  const submitComplaint = useSubmitComplaint()
+
   const userId = authUser?.id != null ? String(authUser.id) : null
   const myReview = useMemo(
     () => (eventId && userId ? findUserReview(eventId, userId) : undefined),
@@ -263,8 +265,6 @@ export function EventDetailPage() {
     }
   }
 
-  const submitComplaint = useSubmitComplaint()
-
   const onSubmitReport = async (e: FormEvent) => {
     e.preventDefault()
     const numericId = Number(eventId)
@@ -280,6 +280,11 @@ export function EventDetailPage() {
       setReportDone(false)
     }
   }
+
+  const chatDisplayName = authUser?.display_name?.trim() || getDemoUser().displayName || 'Гость'
+  const chatAsOrganizer = Boolean(
+    authUser?.id != null && d.organizer_id != null && d.organizer_id === authUser.id
+  )
 
   return (
     <div className="page eventDetailPage">
@@ -611,6 +616,8 @@ export function EventDetailPage() {
         onClose={() => setChatOpen(false)}
         eventId={eventId}
         organizerName={d.organizer_name}
+        displayName={chatDisplayName}
+        asOrganizer={chatAsOrganizer}
       />
 
       {reportOpen ? (

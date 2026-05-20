@@ -54,6 +54,7 @@ function withResolvedMediaDetail(item: ApiEventDetail): ApiEventDetail {
 export const EventDetailSchema = CatalogEventItemSchema.extend({
   description: z.string(),
   address_detail: z.string().optional().default(''),
+  organizer_id: z.number().int().nullable().optional(),
   organizer_name: z.string(),
   gallery_urls: z.array(z.string()).optional().default([]),
   participants_count: z.coerce.number().int().nonnegative(),

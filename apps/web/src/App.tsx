@@ -18,10 +18,11 @@ import {
 import { BrandLogo } from './components/BrandLogo'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SidebarCitySelect } from './components/SidebarCitySelect'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ensureDemoFavoriteReviews,
   ensureDemoUserEventData,
-  ensureTestEvent,
+  purgeLocalDemoEvent,
 } from './lib/eventInteractionStorage'
 import { ensureDemoUser } from './lib/userSession'
 import { RouteErrorBoundary } from './components/RouteErrorBoundary'
@@ -252,6 +253,7 @@ function MobileBottomNav({ isAuthed, showAdmin }: { isAuthed: boolean; showAdmin
 }
 
 export default function App() {
+  const qc = useQueryClient()
   const hydrate = useCityStore((s) => s.hydrate)
   const detectCityFromGeolocation = useCityStore((s) => s.detectCityFromGeolocation)
   const hydrateAuth = useAuthStore((s) => s.hydrate)
@@ -265,11 +267,12 @@ export default function App() {
     hydrate()
     detectCityFromGeolocation()
     hydrateAuth()
-    const demoUser = ensureDemoUser()
-    const testId = ensureTestEvent(demoUser.displayName)
-    ensureDemoUserEventData(testId)
-    ensureDemoFavoriteReviews(testId)
-  }, [hydrate, detectCityFromGeolocation, hydrateAuth])
+    ensureDemoUser()
+    purgeLocalDemoEvent()
+    ensureDemoUserEventData()
+    ensureDemoFavoriteReviews()
+    void qc.invalidateQueries({ queryKey: ['catalog'] })
+  }, [hydrate, detectCityFromGeolocation, hydrateAuth, qc])
 
   useEffect(() => {
     if (meQ.data) setUser(meQ.data)
@@ -338,7 +341,11 @@ export default function App() {
             title={isAuthed ? 'Аккаунт' : 'Вход'}
           >
             <div className="userAvatar" aria-hidden>
-              <IconUser />
+              {isAuthed && user?.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="userAvatarPhoto" />
+              ) : (
+                <IconUser />
+              )}
             </div>
             <div className="userCardText">
               <span className="userCardTitle">{isAuthed ? user?.display_name ?? 'Аккаунт' : 'Аккаунт'}</span>

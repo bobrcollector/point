@@ -524,9 +524,17 @@ body {
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  overflow: hidden;
   background: linear-gradient(145deg, rgba(249, 115, 22, 0.35), rgba(255, 255, 255, 0.12));
   border: 1px solid rgba(255, 255, 255, 0.22);
   color: #fff;
+}
+
+.userAvatarPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .userCardText {
@@ -1413,6 +1421,7 @@ body {
   font-weight: 650;
   outline: none;
   background: #fff;
+  box-sizing: border-box;
 }
 
 .input:focus,
@@ -3835,11 +3844,13 @@ button.mapEventCardGhost {
 .accountForm,
 .adminPage,
 .adminList,
-.accountPage { display: flex; flex-direction: column; gap: 10px; }
-.authInput { width: 100%; }
+.accountPage { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.authInput,
+.authForm .input,
+.authForm .select { width: 100%; min-width: 0; box-sizing: border-box; }
 .authTextarea { min-height: 96px; padding: 10px 12px; resize: vertical; }
 .authSubmit,
-.authLogoutBtn { width: 100%; }
+.authLogoutBtn { width: 100%; box-sizing: border-box; }
 .authError { color: #b91c1c; font-size: 13px; font-weight: 650; }
 .authSuccess { color: #047857; font-size: 14px; font-weight: 650; }
 .authFooter { margin-top: 16px; font-size: 14px; color: var(--muted); text-align: center; }

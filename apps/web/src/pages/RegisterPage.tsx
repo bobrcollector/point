@@ -1,12 +1,32 @@
 import { isAxiosError } from 'axios'
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthFormLayout } from '../components/AuthFormLayout'
-import { useRegister } from '../features/auth/queries'
+import { useMe, useRegister } from '../features/auth/queries'
+import { useAuthStore } from '../stores/authStore'
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  const meQ = useMe(Boolean(token))
   const register = useRegister()
+
+  const fromRaw = (location.state as { from?: string } | null)?.from
+  const from = fromRaw && fromRaw !== '/login' && fromRaw !== '/register' ? fromRaw : '/'
+
+  const profile = user ?? meQ.data
+  if (token && profile) {
+    return <Navigate to={from} replace />
+  }
+  if (token && meQ.isPending) {
+    return (
+      <div className="page authPage">
+        <p className="pageSub">Загрузка сессии…</p>
+      </div>
+    )
+  }
 
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')

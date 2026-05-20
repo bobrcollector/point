@@ -1,23 +1,33 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useOrganizerChat } from '../features/chat/useOrganizerChat'
-import { getDemoUser } from '../lib/userSession'
 
 type Props = {
   open: boolean
   onClose: () => void
   eventId: string
   organizerName: string
+  /** Имя для подписи сообщений (аккаунт). */
+  displayName: string
+  /** Пользователь создал это событие — сообщения с ролью организатора. */
+  asOrganizer: boolean
 }
 
-export function OrganizerChatPanel({ open, onClose, eventId, organizerName }: Props) {
+export function OrganizerChatPanel({
+  open,
+  onClose,
+  eventId,
+  organizerName,
+  displayName,
+  asOrganizer,
+}: Props) {
   const [draft, setDraft] = useState('')
   const messagesRef = useRef<HTMLDivElement>(null)
-  const user = getDemoUser()
 
   const { messages, status, send } = useOrganizerChat({
     eventId,
     organizerName,
-    displayName: user.displayName,
+    displayName,
+    asOrganizer,
     enabled: open,
   })
 
@@ -71,10 +81,10 @@ export function OrganizerChatPanel({ open, onClose, eventId, organizerName }: Pr
         <div className="eventDetailModalHead">
           <div>
             <h2 id="organizer-chat-title" className="eventDetailModalTitle">
-              Чат с организатором
+              {asOrganizer ? 'Чат по вашему событию' : 'Чат с организатором'}
             </h2>
             <p className="eventDetailMuted" style={{ margin: '4px 0 0' }}>
-              {organizerName}
+              {asOrganizer ? `${organizerName} · вы как организатор` : organizerName}
               {statusLabel ? (
                 <>
                   {' · '}
@@ -119,8 +129,8 @@ export function OrganizerChatPanel({ open, onClose, eventId, organizerName }: Pr
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Сообщение организатору…"
-            aria-label="Сообщение организатору"
+            placeholder={asOrganizer ? 'Ответ участнику…' : 'Сообщение организатору…'}
+            aria-label={asOrganizer ? 'Ответ участнику' : 'Сообщение организатору'}
             disabled={status !== 'connected'}
           />
           <button

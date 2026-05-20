@@ -31,6 +31,7 @@ export type ApiTicketType = {
 export type ApiEventDetail = ApiEventItem & {
   description: string
   address_detail: string
+  organizer_id?: number | null
   organizer_name: string
   gallery_urls: string[]
   participants_count: number

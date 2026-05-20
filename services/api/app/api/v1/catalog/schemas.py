@@ -34,6 +34,7 @@ class EventDetail(EventItem):
 
     description: str
     address_detail: str
+    organizer_id: int
     organizer_name: str
     gallery_urls: list[str] = []
     participants_count: int = 0

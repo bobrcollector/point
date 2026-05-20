@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { api } from '../../lib/api'
+import { resolveMediaUrl } from '../../lib/mediaUrl'
 import { useAuthStore } from '../../stores/authStore'
 import { enablePwaPush } from '../../lib/push'
 import type { UserMe } from './types'
@@ -29,9 +30,16 @@ const UserMeSchema = z.object({
 
 const TokenSchema = z.object({ access_token: z.string(), token_type: z.string().optional() })
 
+/** Как у обложек в каталоге: при отдельном origin API подставляем полный URL, иначе <img src="/uploads/..."> ломается. */
+function parseUserMe(data: unknown): UserMe {
+  const me = UserMeSchema.parse(data)
+  const resolved = resolveMediaUrl(me.avatar_url)
+  return { ...me, avatar_url: resolved ?? me.avatar_url }
+}
+
 async function fetchMe(): Promise<UserMe> {
   const res = await api.get('/api/v1/users/me')
-  return UserMeSchema.parse(res.data)
+  return parseUserMe(res.data)
 }
 
 export function useMe(enabled = true) {
@@ -52,11 +60,6 @@ export function useLogin() {
       const res = await api.post('/api/v1/auth/login', body)
       const { access_token } = TokenSchema.parse(res.data)
       useAuthStore.setState({ token: access_token })
-      try {
-        localStorage.setItem('point:accessToken', access_token)
-      } catch {
-        // ignore
-      }
       const me = await fetchMe()
       setSession(access_token, me)
       if (me.notify_push) void enablePwaPush()
@@ -74,11 +77,6 @@ export function useRegister() {
       const res = await api.post('/api/v1/auth/register', body)
       const { access_token } = TokenSchema.parse(res.data)
       useAuthStore.setState({ token: access_token })
-      try {
-        localStorage.setItem('point:accessToken', access_token)
-      } catch {
-        // ignore
-      }
       const me = await fetchMe()
       setSession(access_token, me)
       if (me.notify_push) void enablePwaPush()
@@ -96,7 +94,7 @@ export function useUpdateProfile() {
       body: Partial<Pick<UserMe, 'display_name' | 'bio' | 'organizer_description' | 'phone' | 'city'>>
     ) => {
       const res = await api.patch('/api/v1/users/me', body)
-      const me = UserMeSchema.parse(res.data)
+      const me = parseUserMe(res.data)
       setUser(me)
       return me
     },
@@ -114,7 +112,7 @@ export function useUploadAvatar() {
       const res = await api.post('/api/v1/users/me/avatar', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      const me = UserMeSchema.parse(res.data)
+      const me = parseUserMe(res.data)
       setUser(me)
       return me
     },
@@ -128,7 +126,7 @@ export function useUpdateSettings() {
   return useMutation({
     mutationFn: async (body: Partial<Pick<UserMe, 'notify_email' | 'notify_push' | 'locale' | 'profile_visibility'>>) => {
       const res = await api.patch('/api/v1/users/me/settings', body)
-      const me = UserMeSchema.parse(res.data)
+      const me = parseUserMe(res.data)
       setUser(me)
       return me
     },
@@ -142,7 +140,7 @@ export function useSetInterests() {
   return useMutation({
     mutationFn: async (category_ids: number[]) => {
       const res = await api.put('/api/v1/users/me/interests', { category_ids })
-      const me = UserMeSchema.parse(res.data)
+      const me = parseUserMe(res.data)
       setUser(me)
       try {
         const names = me.interests.map((c) => c.name)

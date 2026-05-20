@@ -5,9 +5,36 @@ const TOKEN_KEY = 'point:accessToken'
 
 function readToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    const fromSession = sessionStorage.getItem(TOKEN_KEY)
+    if (fromSession) return fromSession
+    // Одноразовая миграция: раньше токен лежал в localStorage — переносим в session.
+    const legacy = localStorage.getItem(TOKEN_KEY)
+    if (legacy) {
+      sessionStorage.setItem(TOKEN_KEY, legacy)
+      localStorage.removeItem(TOKEN_KEY)
+      return legacy
+    }
+    return null
   } catch {
     return null
+  }
+}
+
+function writeToken(token: string) {
+  sessionStorage.setItem(TOKEN_KEY, token)
+  try {
+    localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+function clearStoredToken() {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // ignore
   }
 }
 
@@ -28,7 +55,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setSession: (token, user) => {
     try {
-      localStorage.setItem(TOKEN_KEY, token)
+      writeToken(token)
     } catch {
       // ignore
     }
@@ -38,11 +65,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user }),
 
   logout: () => {
-    try {
-      localStorage.removeItem(TOKEN_KEY)
-    } catch {
-      // ignore
-    }
+    clearStoredToken()
     set({ token: null, user: null })
   },
 

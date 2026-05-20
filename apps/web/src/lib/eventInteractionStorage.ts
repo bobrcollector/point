@@ -140,14 +140,7 @@ function seedReviewsIfEmpty(eventId: string, rows: Omit<StoredReview, 'id'>[]) {
 }
 
 /** Демо-отзывы для событий в избранном. */
-export function ensureDemoFavoriteReviews(testEventId?: string) {
-  if (testEventId) {
-    const fav = new Set(readFavoriteIds())
-    if (!fav.has(testEventId)) {
-      fav.add(testEventId)
-      setFavoriteIds([...fav])
-    }
-  }
+export function ensureDemoFavoriteReviews() {
   const favIds = readFavoriteIds()
   const samples: Record<string, Omit<StoredReview, 'id'>[]> = {
     '104': [
@@ -162,20 +155,6 @@ export function ensureDemoFavoriteReviews(testEventId?: string) {
         text: 'Места на верхних рядах лучше бронировать заранее. Напитки дороговаты, но вид того стоит.',
         rating: 4,
         at: Date.now() - 1000 * 60 * 60 * 24 * 2
-      }
-    ],
-    'local-demo-1': [
-      {
-        author: 'Елена С.',
-        text: 'Удобная площадка для нетворкинга: успели познакомиться с тремя командами из соседних столиков.',
-        rating: 5,
-        at: Date.now() - 1000 * 60 * 60 * 20
-      },
-      {
-        author: 'Игорь П.',
-        text: 'Организация на уровне, модератор держал темп. Хотелось бы больше времени на вопросы в конце.',
-        rating: 4,
-        at: Date.now() - 1000 * 60 * 60 * 8
       }
     ]
   }
@@ -225,16 +204,13 @@ export function addReport(payload: { eventId: string; reason: string; details: s
 }
 
 /** Первичное наполнение «Мои события» и избранного для демо-пользователя. */
-export function ensureDemoUserEventData(testEventId: string) {
+export function ensureDemoUserEventData() {
   if (localStorage.getItem(KEY_DEMO_SEEDED)) return
-  addCreatedEventId(testEventId)
   const part = new Set(readParticipatingIds())
   part.add('102')
-  part.add(testEventId)
   setParticipatingIds([...part])
   const fav = new Set(readFavoriteIds())
   fav.add('104')
-  fav.add(testEventId)
   setFavoriteIds([...fav])
   localStorage.setItem(KEY_DEMO_SEEDED, '1')
   ensureDemoFavoriteReviews()
@@ -292,6 +268,8 @@ export type LocalEventRecord = {
   latitude?: number | null
   longitude?: number | null
   organizer_name: string
+  /** Если создатель залогинен при демо-событии — для чата «как организатор». */
+  organizer_user_id?: number | null
   gallery_urls: string[]
   participants_count: number
   categories: { id: number; name: string }[]
@@ -318,6 +296,10 @@ function rowFromLegacyMapEntry(key: string, val: unknown): LocalEventRecord | nu
     latitude: typeof row.latitude === 'number' ? row.latitude : null,
     longitude: typeof row.longitude === 'number' ? row.longitude : null,
     organizer_name: typeof row.organizer_name === 'string' ? row.organizer_name : 'Организатор',
+    organizer_user_id:
+      typeof row.organizer_user_id === 'number' && Number.isFinite(row.organizer_user_id)
+        ? row.organizer_user_id
+        : null,
     gallery_urls: Array.isArray(row.gallery_urls) ? row.gallery_urls.filter((x): x is string => typeof x === 'string') : [],
     participants_count: typeof row.participants_count === 'number' ? row.participants_count : 0,
     categories: Array.isArray(row.categories)
@@ -356,6 +338,31 @@ function readLocalEventsAll(): LocalEventRecord[] {
 
 function writeLocalEventsAll(rows: LocalEventRecord[]) {
   localStorage.setItem(KEY_LOCAL_EVENTS, JSON.stringify(rows))
+}
+
+/** Удаляет устаревшее локальное демо-событие «Нетворкинг для IT-специалистов» и связанные данные. */
+export function purgeLocalDemoEvent(): void {
+  const id = DEMO_LOCAL_EVENT_ID
+  const allRows = readLocalEventsAll()
+  const nextRows = allRows.filter((e) => e.id !== id)
+  if (nextRows.length !== allRows.length) {
+    writeLocalEventsAll(nextRows)
+  }
+  setFavoriteIds(readFavoriteIds().filter((x) => x !== id))
+  setParticipatingIds(readParticipatingIds().filter((x) => x !== id))
+  setCreatedEventIds(readCreatedEventIds().filter((x) => x !== id))
+  const reviews = readJson<Record<string, StoredReview[]>>(KEY_REVIEWS, {})
+  if (id in reviews) {
+    const copy = { ...reviews }
+    delete copy[id]
+    writeJson(KEY_REVIEWS, copy)
+  }
+  const chats = readJson<Record<string, StoredChatMessage[]>>(KEY_CHAT, {})
+  if (id in chats) {
+    const copyChat = { ...chats }
+    delete copyChat[id]
+    writeJson(KEY_CHAT, copyChat)
+  }
 }
 
 export function readLocalEvents(): LocalEventRecord[] {
@@ -400,49 +407,10 @@ export function localEventToApiDetail(row: LocalEventRecord): ApiEventDetail {
     description: row.description,
     address_detail: row.address_detail,
     organizer_name: row.organizer_name,
+    organizer_id: row.organizer_user_id ?? null,
     gallery_urls: row.gallery_urls,
     participants_count: row.participants_count
   }
-}
-
-function buildDemoLocalEvent(organizerName: string): LocalEventRecord {
-  const inThreeDays = new Date()
-  inThreeDays.setDate(inThreeDays.getDate() + 3)
-  inThreeDays.setHours(19, 0, 0, 0)
-  return {
-    id: DEMO_LOCAL_EVENT_ID,
-    title: 'Нетворкинг для IT-специалистов',
-    event_datetime: inThreeDays.toISOString(),
-    location: 'Коворкинг «Точка»',
-    address_detail: 'Москва, ул. Тверская, 12, 3 этаж',
-    description:
-      'Неформальная встреча разработчиков и продактов: короткие питчи, обмен контактами и обсуждение pet-проектов. Напитки включены.',
-    price: 0,
-    average_rating: 4.6,
-    cover_image_url: null,
-    latitude: 55.757,
-    longitude: 37.615,
-    organizer_name: organizerName,
-    gallery_urls: [],
-    participants_count: 24,
-    categories: [{ id: 21, name: 'Нетворкинг' }],
-    is_for_children: false,
-    age_rating_min: 18
-  }
-}
-
-/** Создаёт демо-событие в localStorage, если его ещё нет. Возвращает id. */
-export function ensureTestEvent(organizerName: string): string {
-  const rows = readLocalEventsAll()
-  const idx = rows.findIndex((e) => e.id === DEMO_LOCAL_EVENT_ID)
-  const demo = buildDemoLocalEvent(organizerName)
-  if (idx >= 0) {
-    rows[idx] = { ...demo, ...rows[idx], organizer_name: organizerName }
-    writeLocalEventsAll(rows)
-    return DEMO_LOCAL_EVENT_ID
-  }
-  writeLocalEventsAll([demo, ...rows])
-  return DEMO_LOCAL_EVENT_ID
 }
 
 // --- Навигация «назад» со страницы события ---

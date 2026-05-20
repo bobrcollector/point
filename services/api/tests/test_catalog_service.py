@@ -218,6 +218,26 @@ class TestFilterAndSort:
         )
         assert [t[0].id for t in result] == [1]
 
+    def test_past_events_excluded_from_catalog_list(self):
+        past = make_event(id=1, event_datetime=datetime(2020, 1, 1, 12, 0, tzinfo=timezone.utc))
+        future = make_event(id=2, event_datetime=datetime(2035, 6, 1, 12, 0, tzinfo=timezone.utc))
+        result = catalog_service.filter_and_sort_events(
+            [past, future],
+            lat=None,
+            lon=None,
+            radius_m=None,
+            category_ids=None,
+            bounds=None,
+            date_from=None,
+            date_to=None,
+            price_min=None,
+            price_max=None,
+            for_children=None,
+            age_ratings=None,
+            sort_by="date",
+        )
+        assert [t[0].id for t in result] == [2]
+
 
 class TestGetEventByIdFilter:
     """Список и карточка должны использовать один статус (approved)."""
