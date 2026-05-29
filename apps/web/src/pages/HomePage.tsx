@@ -209,14 +209,7 @@ export function HomePage() {
     if (authUser?.interests?.length) {
       return authUser.interests.map((c) => normalizeCategoryName(c.name))
     }
-    try {
-      const raw = localStorage.getItem('point:userInterests')
-      const parsed = raw ? (JSON.parse(raw) as unknown) : null
-      if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === 'string').map(normalizeCategoryName)
-      return ['Концерты', 'Настолки']
-    } catch {
-      return ['Концерты', 'Настолки']
-    }
+    return ['Концерты', 'Настолки']
   }, [authUser])
 
   const toggleCategory = (name: string) => {

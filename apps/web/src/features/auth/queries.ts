@@ -142,12 +142,6 @@ export function useSetInterests() {
       const res = await api.put('/api/v1/users/me/interests', { category_ids })
       const me = parseUserMe(res.data)
       setUser(me)
-      try {
-        const names = me.interests.map((c) => c.name)
-        localStorage.setItem('point:userInterests', JSON.stringify(names))
-      } catch {
-        // ignore
-      }
       return me
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auth', 'me'] }),

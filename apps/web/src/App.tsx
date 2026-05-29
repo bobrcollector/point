@@ -9,9 +9,9 @@ import {
   IconBell,
   IconHeart,
   IconLogIn,
+  IconLogOut,
   IconMenu,
   IconPlusSquare,
-  IconSettings,
   IconShield,
   IconUser,
 } from './components/NavGlyphs'
@@ -20,17 +20,12 @@ import { HomeCitySelect } from './components/HomeCitySelect'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SidebarCitySelect } from './components/SidebarCitySelect'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  ensureDemoFavoriteReviews,
-  ensureDemoUserEventData,
-  purgeLocalDemoEvent,
-} from './lib/eventInteractionStorage'
-import { ensureDemoUser } from './lib/userSession'
 import { RouteErrorBoundary } from './components/RouteErrorBoundary'
 import { EventDetailPage } from './pages/EventDetailPage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { HomePage } from './pages/HomePage'
-import { MyEventsPage, MY_EVENTS_SUBNAV } from './pages/MyEventsPage'
+import { MyEventsPage } from './pages/MyEventsPage'
+import { MY_EVENTS_SUBNAV } from './pages/myEventsNav'
 import { CreateEventPage } from './pages/CreateEventPage'
 import { EditEventPage } from './pages/EditEventPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
@@ -46,6 +41,7 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { RequireAuth } from './components/RequireAuth'
 import { useMe } from './features/auth/queries'
 import { canModerate } from './features/auth/types'
+import { useNotifications } from './features/notifications/queries'
 import { useAuthStore } from './stores/authStore'
 import { useCityStore } from './stores/cityStore'
 
@@ -88,10 +84,7 @@ const MENU_GROUPS: NavGroup[] = [{ title: 'Мои события', items: MY_EVE
 
 const SERVICE_ITEMS: NavDef[] = [{ to: '/admin', title: 'Админ-панель', label: 'Админ', Icon: IconShield }]
 
-const FOOTER_NAV: NavDef[] = [
-  { to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSettings },
-  { to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' },
-]
+const LOGIN_NAV: NavDef = { to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' }
 
 const PROFILE_PATHS = new Set(['/account', '/settings', '/login'])
 
@@ -125,7 +118,15 @@ function navLinkClass(item: NavDef) {
   }
 }
 
-function MobileBottomNav({ isAuthed, showAdmin }: { isAuthed: boolean; showAdmin: boolean }) {
+function MobileBottomNav({
+  isAuthed,
+  showAdmin,
+  hasUnreadNotifications,
+}: {
+  isAuthed: boolean
+  showAdmin: boolean
+  hasUnreadNotifications: boolean
+}) {
   const location = useLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
@@ -139,15 +140,10 @@ function MobileBottomNav({ isAuthed, showAdmin }: { isAuthed: boolean; showAdmin
         ]
       : []),
     ...(showAdmin ? [{ to: '/admin', title: 'Админ-панель', label: 'Админ-панель', Icon: IconShield }] : []),
-    ...(isAuthed ? [{ to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSettings }] : []),
     ...(isAuthed ? [] : [{ to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' as const }]),
   ]
 
   const closeSheet = useCallback(() => setSheetOpen(false), [])
-
-  useEffect(() => {
-    closeSheet()
-  }, [location.pathname, closeSheet])
 
   useEffect(() => {
     if (!sheetOpen) return
@@ -252,6 +248,7 @@ function MobileBottomNav({ isAuthed, showAdmin }: { isAuthed: boolean; showAdmin
             >
               <span className="mobileSheetLinkIcon" aria-hidden>
                 <item.Icon />
+                {item.to === '/notifications' && hasUnreadNotifications ? <span className="navUnreadDot" /> : null}
               </span>
               <span className="mobileSheetLinkText">{item.label}</span>
             </NavLink>
@@ -273,15 +270,13 @@ export default function App() {
   const logout = useAuthStore((s) => s.logout)
   const setUser = useAuthStore((s) => s.setUser)
   const meQ = useMe(Boolean(token))
+  const notificationsQ = useNotifications()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     hydrate()
     detectCityFromGeolocation()
     hydrateAuth()
-    ensureDemoUser()
-    purgeLocalDemoEvent()
-    ensureDemoUserEventData()
-    ensureDemoFavoriteReviews()
     void qc.invalidateQueries({ queryKey: ['catalog'] })
   }, [hydrate, detectCityFromGeolocation, hydrateAuth, qc])
 
@@ -291,10 +286,11 @@ export default function App() {
 
   const isAuthed = Boolean(token && user)
   const showAdmin = canModerate(user?.role)
+  const hasUnreadNotifications = Boolean(notificationsQ.data?.some((item) => !item.is_read))
 
   return (
-    <div className="appShell">
-      <aside className="sidebar">
+    <div className={sidebarCollapsed ? 'appShell appShellSidebarCollapsed' : 'appShell'}>
+      <aside className={sidebarCollapsed ? 'sidebar sidebarCollapsed' : 'sidebar'}>
         <div className="brandRow sidebarBrand">
           <BrandLogo />
           <SidebarCitySelect />
@@ -305,8 +301,9 @@ export default function App() {
             <div className="navGroupTitle">Меню</div>
             {MENU_ITEMS.filter((item) => isAuthed || (item.to !== '/favorites' && item.to !== '/notifications')).map((item) => (
               <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClass(item)} title={item.title}>
-                <span className="navIcon" aria-hidden>
+                <span className="navIcon navIconWithBadge" aria-hidden>
                   <item.Icon />
+                  {item.to === '/notifications' && hasUnreadNotifications ? <span className="navUnreadDot" /> : null}
                 </span>
                 <span className="navItemLabel">{item.label}</span>
               </NavLink>
@@ -371,19 +368,14 @@ export default function App() {
 
           <nav className="nav navFooter" aria-label="Сервис аккаунта">
             {isAuthed ? (
-              <>
-                <NavLink to="/settings" className={navLinkClass(FOOTER_NAV[0])} title="Настройки">
-                  <span className="navIcon" aria-hidden>
-                    <IconSettings />
-                  </span>
-                  <span className="navItemLabel">Настройки</span>
-                </NavLink>
-                <button type="button" className="navItem navItemCta navItemButton" onClick={() => logout()} title="Выход">
-                  <span className="navItemLabel">Выход</span>
-                </button>
-              </>
+              <button type="button" className="navItem navItemCta navItemButton" onClick={() => logout()} title="Выход">
+                <span className="navIcon" aria-hidden>
+                  <IconLogOut />
+                </span>
+                <span className="navItemLabel">Выход</span>
+              </button>
             ) : (
-              <NavLink to="/login" className={navLinkClass(FOOTER_NAV[1])} title="Вход">
+              <NavLink to="/login" className={navLinkClass(LOGIN_NAV)} title="Вход">
                 <span className="navIcon" aria-hidden>
                   <IconLogIn />
                 </span>
@@ -392,6 +384,16 @@ export default function App() {
             )}
           </nav>
         </div>
+        <button
+          type="button"
+          className={sidebarCollapsed ? 'sidebarCollapseBtn collapsed' : 'sidebarCollapseBtn'}
+          aria-label={sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
+          aria-pressed={sidebarCollapsed}
+          title={sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
+          onClick={() => setSidebarCollapsed((value) => !value)}
+        >
+          <IconChevronRight />
+        </button>
       </aside>
 
       <main className="main">
@@ -476,7 +478,7 @@ export default function App() {
         </Routes>
       </main>
 
-      <MobileBottomNav isAuthed={isAuthed} showAdmin={showAdmin} />
+      <MobileBottomNav isAuthed={isAuthed} showAdmin={showAdmin} hasUnreadNotifications={hasUnreadNotifications} />
     </div>
   )
 }

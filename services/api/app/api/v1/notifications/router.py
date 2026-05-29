@@ -37,6 +37,24 @@ async def list_notifications(
     return [_to_out(n) for n in rows]
 
 
+@router.put("/read-all", response_model=list[NotificationOut])
+async def mark_all_read(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    rows = (
+        await session.execute(
+            select(Notification)
+            .where(Notification.user_id == user.id)
+            .order_by(Notification.created_at.desc())
+        )
+    ).scalars().all()
+    for n in rows:
+        n.is_read = True
+    await session.commit()
+    return [_to_out(n) for n in rows]
+
+
 @router.put("/{notification_id}/read", response_model=NotificationOut)
 async def mark_read(
     notification_id: int,

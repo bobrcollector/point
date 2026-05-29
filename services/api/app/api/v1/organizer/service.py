@@ -215,7 +215,7 @@ async def finish_event(session: AsyncSession, organizer_id: int, event_id: int) 
             detail="Завершить можно только опубликованное или ожидающее модерации событие",
         )
     now = datetime.now(timezone.utc)
-    ev.status = "cancelled"
+    ev.status = "archived"
     ev.is_hidden = True
     ev.updated_at = now
     await session.flush()

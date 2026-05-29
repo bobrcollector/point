@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ProfileAvatarUpload } from '../components/ProfileAvatarUpload'
 import { RequireAuth } from '../components/RequireAuth'
@@ -14,43 +14,28 @@ import {
 import { api } from '../lib/api'
 import { enablePwaPush } from '../lib/push'
 import { useAuthStore } from '../stores/authStore'
+import type { UserMe } from '../features/auth/types'
 
-function SettingsContent() {
+function SettingsForm({ profile }: { profile: UserMe }) {
   const logout = useAuthStore((s) => s.logout)
-  const user = useAuthStore((s) => s.user)
-  const meQ = useMe()
-  const profile = meQ.data ?? user
   const updateProfile = useUpdateProfile()
   const uploadAvatar = useUploadAvatar()
   const setInterests = useSetInterests()
   const updateSettings = useUpdateSettings()
   const categoriesQ = useCategories()
-  const [displayName, setDisplayName] = useState('')
-  const [bio, setBio] = useState('')
-  const [phone, setPhone] = useState('')
-  const [city, setCity] = useState('')
-  const [selectedCats, setSelectedCats] = useState<number[]>([])
+  const [displayName, setDisplayName] = useState(profile.display_name)
+  const [bio, setBio] = useState(profile.bio ?? '')
+  const [phone, setPhone] = useState(profile.phone ?? '')
+  const [city, setCity] = useState(profile.city ?? '')
+  const [selectedCats, setSelectedCats] = useState<number[]>(() => profile.interests.map((c) => c.id))
 
-  const [notifyEmail, setNotifyEmail] = useState(true)
-  const [notifyPush, setNotifyPush] = useState(false)
-  const [locale, setLocale] = useState('ru')
-  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public')
+  const [notifyEmail, setNotifyEmail] = useState(profile.notify_email)
+  const [notifyPush, setNotifyPush] = useState(profile.notify_push)
+  const [locale, setLocale] = useState(profile.locale)
+  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>(profile.profile_visibility)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!profile) return
-    setDisplayName(profile.display_name)
-    setBio(profile.bio ?? '')
-    setPhone(profile.phone ?? '')
-    setCity(profile.city ?? '')
-    setSelectedCats(profile.interests.map((c) => c.id))
-    setNotifyEmail(profile.notify_email)
-    setNotifyPush(profile.notify_push)
-    setLocale(profile.locale)
-    setVisibility(profile.profile_visibility)
-  }, [profile])
 
   async function saveProfile(e: FormEvent) {
     e.preventDefault()
@@ -126,25 +111,17 @@ function SettingsContent() {
     setSelectedCats((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
-  if (!profile) {
-    return (
-      <div className="page">
-        <p className="pageSub">Загрузка…</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="page settingsPage">
-      <div className="pageHeader">
+    <div className="page myEventsPage settingsPage">
+      <header className="myEventsHeader">
         <div>
-          <div className="pageTitle">Настройки</div>
-          <div className="pageSub">Редактирование профиля, интересов и параметров аккаунта</div>
+          <h1 className="myEventsTitle">Настройки профиля</h1>
+          <p className="eventDetailMuted">Редактирование профиля, интересов и параметров аккаунта</p>
         </div>
         <Link className="homeGhostBtn" to="/account">
           ← К профилю
         </Link>
-      </div>
+      </header>
 
       {msg ? <p className="authBanner">{msg}</p> : null}
 
@@ -279,6 +256,25 @@ function SettingsContent() {
       </section>
     </div>
   )
+}
+
+function SettingsContent() {
+  const user = useAuthStore((s) => s.user)
+  const meQ = useMe()
+  const profile = meQ.data ?? user
+
+  if (!profile) {
+    return (
+      <div className="page myEventsPage settingsPage">
+        <header className="myEventsHeader">
+          <h1 className="myEventsTitle">Настройки профиля</h1>
+        </header>
+        <p className="pageSub">Загрузка…</p>
+      </div>
+    )
+  }
+
+  return <SettingsForm key={profile.id} profile={profile} />
 }
 
 export function SettingsPage() {

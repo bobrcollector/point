@@ -397,11 +397,6 @@
   }
 
   /* ——— Админка и уведомления ——— */
-  .adminPage,
-  .notificationsPage {
-    padding: 0;
-  }
-
   .adminTabs {
     flex-wrap: nowrap;
     overflow-x: auto;

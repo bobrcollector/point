@@ -20,11 +20,11 @@ export function useMyOrganizerEvents() {
   })
 }
 
-export function useOrganizerEventDetail(eventId: number | undefined) {
+export function useOrganizerEventDetail(eventId: number | undefined, enabled = true) {
   return useQuery({
     queryKey: ['organizer', 'event', eventId],
     queryFn: () => getOrganizerEvent(eventId!),
-    enabled: Boolean(eventId && eventId > 0)
+    enabled: enabled && Boolean(eventId && eventId > 0)
   })
 }
 
@@ -69,6 +69,7 @@ export function usePublishEvent() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['organizer', 'events'] })
       void qc.invalidateQueries({ queryKey: ['catalog'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
     }
   })
 }

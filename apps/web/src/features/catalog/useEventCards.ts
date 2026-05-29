@@ -1,7 +1,5 @@
 import { useQueries } from '@tanstack/react-query'
 
-import { isLocalEventId, localEventDetailQueryOptions } from '../../lib/eventInteractionStorage'
-
 import type { EventListCardData } from '../../components/EventListCard'
 
 import type { ApiEventDetail } from './types'
@@ -45,14 +43,6 @@ export function useEventCards(ids: string[]) {
   const results = useQueries({
 
     queries: uniqueIds.map((id) => {
-
-      if (isLocalEventId(id)) {
-        return {
-          ...localEventDetailQueryOptions(id),
-          select: (detail: ApiEventDetail | undefined) => (detail ? toCard(id, detail) : undefined),
-        }
-      }
-
       return {
 
         ...catalogEventDetailQueryOptions(id),

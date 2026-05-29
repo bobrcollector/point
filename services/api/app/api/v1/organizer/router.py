@@ -18,6 +18,7 @@ from app.api.v1.organizer.schemas import (
 from app.core.config import settings
 from app.core.media import abs_media_url
 from app.db.session import get_db
+from app.services.notifications import create_notification, moderation_notification_content, moderation_push_title
 
 router = APIRouter()
 
@@ -103,6 +104,13 @@ async def publish_event(
     organizer_id: int = Depends(get_current_organizer_id),
 ):
     ev = await organizer_service.publish_event(session, organizer_id, event_id)
+    await create_notification(
+        session,
+        user_id=organizer_id,
+        n_type="moderation_status",
+        content=moderation_notification_content(ev.title, ev.status, ev.moderation_reason),
+        push_title=moderation_push_title(ev.status),
+    )
     await session.commit()
     return OrganizerEventDetail.model_validate(organizer_service._event_to_detail(ev))
 

@@ -290,16 +290,16 @@ function AdminContent() {
   ]
 
   return (
-    <div className="page adminPage">
-      <div className="pageHeader">
+    <div className="page myEventsPage adminPage">
+      <header className="myEventsHeader">
         <div>
-          <div className="pageTitle">Админ-панель</div>
-          <div className="pageSub">Управление пользователями, событиями и жалобами</div>
+          <h1 className="myEventsTitle">Админ-панель</h1>
+          <p className="eventDetailMuted">Управление пользователями, событиями и жалобами</p>
         </div>
         <Link to="/" className="homeGhostBtn">
           На сайт
         </Link>
-      </div>
+      </header>
 
       <nav className="adminTabs" aria-label="Разделы админки">
         {tabs.map((t) => (

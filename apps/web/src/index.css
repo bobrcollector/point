@@ -45,6 +45,10 @@ body {
   grid-template-columns: 280px 1fr;
 }
 
+.appShellSidebarCollapsed {
+  grid-template-columns: 92px 1fr;
+}
+
 .sidebar {
   position: sticky;
   top: 0;
@@ -57,11 +61,46 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   background: radial-gradient(1200px 500px at -200px -200px, rgba(249, 115, 22, 0.24), transparent 60%),
     linear-gradient(180deg, #2b105b 0%, #4c1d95 46%, #6d28d9 100%);
   color: #fff;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06);
+  transition: padding 0.18s ease;
+}
+
+.sidebarCollapseBtn {
+  position: absolute;
+  top: 50%;
+  right: -18px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, rgba(76, 29, 149, 0.96), rgba(109, 40, 217, 0.96));
+  color: #fff;
+  cursor: pointer;
+  transform: translateY(-50%) rotate(180deg);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.sidebarCollapseBtn:hover {
+  background: linear-gradient(180deg, rgba(91, 33, 182, 0.98), rgba(124, 58, 237, 0.98));
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.sidebarCollapseBtn.collapsed {
+  transform: translateY(-50%) rotate(0deg);
+}
+
+.sidebarCollapsed {
+  padding-inline: 14px;
 }
 
 .sidebarBody {
@@ -114,6 +153,15 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.sidebarCollapsed .sidebarBrand.brandRow {
+  flex-direction: column;
+  align-items: center;
+}
+
+.sidebarCollapsed .sidebarCityPicker {
+  display: none;
 }
 
 .brandLogo {
@@ -425,6 +473,11 @@ body {
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
+.sidebarCollapsed .navItem {
+  justify-content: center;
+  padding-inline: 11px;
+}
+
 .navItem:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.18);
@@ -446,6 +499,67 @@ body {
   display: inline-flex;
   color: rgba(255, 255, 255, 0.92);
   flex-shrink: 0;
+}
+
+.navIconWithBadge {
+  position: relative;
+}
+
+.navUnreadDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #fb923c;
+  box-shadow: 0 0 0 2px rgba(76, 29, 149, 0.95);
+}
+
+.eventDetailArchivedBadge {
+  background: rgba(15, 23, 42, 0.58);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.sidebarCollapsed .navItemLabel,
+.sidebarCollapsed .navGroupTitle,
+.sidebarCollapsed .userCardText,
+.sidebarCollapsed .userCardChevron,
+.sidebarCollapsed .footerDivider {
+  display: none;
+}
+
+.sidebarCollapsed .nav,
+.sidebarCollapsed .navFooter,
+.sidebarCollapsed .navSubmenu {
+  align-items: center;
+}
+
+.sidebarCollapsed .userCard {
+  width: 52px;
+  height: 48px;
+  box-sizing: border-box;
+  justify-content: center;
+  padding: 4px;
+  margin-inline: auto;
+  border-radius: 14px;
+}
+
+.sidebarCollapsed .userAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+}
+
+.sidebarCollapsed .navItemButton {
+  width: 52px;
+  height: 48px;
+  box-sizing: border-box;
+  justify-content: center;
+  padding: 11px;
+  margin-inline: auto;
 }
 
 .navItem.active .navIcon {
@@ -2640,6 +2754,7 @@ button.mapEventCardGhost {
 
   .mobileSheetLinkIcon {
     display: inline-flex;
+    position: relative;
     flex-shrink: 0;
     color: var(--primary-2);
   }
@@ -3754,6 +3869,33 @@ button.mapEventCardGhost {
   border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
 }
 
+.myEventsNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -6px 0 18px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.myEventsNotice button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
 .myEventsSubnav button.myEventsSubnavLink {
   font: inherit;
   cursor: pointer;
@@ -3936,9 +4078,45 @@ button.mapEventCardGhost {
 .profileViewMuted { color: var(--muted); }
 .authForm,
 .accountForm,
+.adminList { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+
+.accountPage,
 .adminPage,
-.adminList,
-.accountPage { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.notificationsPage,
+.eventManagePage,
+.settingsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.accountPage,
+.notificationsPage,
+.settingsPage {
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 18px 48px;
+}
+
+.adminPage {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 18px 48px;
+}
+
+.accountPage .pageHeader,
+.adminPage .pageHeader,
+.notificationsPage .pageHeader,
+.eventManagePage .pageHeader,
+.settingsPage .pageHeader {
+  border-radius: 28px;
+  background:
+    radial-gradient(560px 180px at 12% 0%, rgba(249, 115, 22, 0.12), transparent 62%),
+    linear-gradient(135deg, #fff, rgba(109, 40, 217, 0.05));
+}
 .authInput,
 .authForm .input,
 .authForm .select { width: 100%; min-width: 0; box-sizing: border-box; }
@@ -3991,7 +4169,7 @@ button.mapEventCardGhost {
 .profileViewText { margin: 0; line-height: 1.55; white-space: pre-wrap; }
 
 /* Organizer event management module */
-.eventManagePage { max-width: 980px; width: 100%; margin: 0 auto; padding: 18px 18px 40px; }
+.eventManagePage { max-width: 980px; width: 100%; margin: 0 auto; padding: 20px 18px 48px; }
 .eventWizardSteps { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .eventWizardStep {
   display: flex;
@@ -4025,6 +4203,14 @@ button.mapEventCardGhost {
 .eventTimePart { margin: 0; }
 .eventWizardMap { min-height: 360px; margin: 12px 0; }
 .eventWizardFilterPanel { padding: 0; border: none; background: transparent; box-shadow: none; }
+.eventWizardFilterPanel .homeFilterCategoryGroups {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+.eventWizardCategoryHead {
+  margin: 16px 0 4px;
+}
 .mapPickMode .map { cursor: crosshair; }
 .eventWizardGalleryItem { position: relative; }
 .eventWizardGalleryRemove { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
@@ -4156,8 +4342,8 @@ button.mapEventCardGhost {
 .adminChartBar { width: 100%; max-width: 36px; background: linear-gradient(180deg, var(--primary), var(--primary-2)); border-radius: 6px 6px 2px 2px; min-height: 8px; }
 .adminChartLabel { font-size: 10px; color: var(--muted); }
 .adminModal { max-width: 420px; }
-.notifList { display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
-.notifRow { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--panel); cursor: pointer; font: inherit; }
+.notifList { display: flex; flex-direction: column; gap: 10px; max-width: none; }
+.notifRow { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; width: 100%; padding: 16px 18px; border-radius: 20px; border: 1px solid var(--border); background: var(--panel); font: inherit; box-shadow: var(--shadow); }
 .notifRowUnread { border-color: rgba(109, 40, 217, 0.35); background: rgba(109, 40, 217, 0.06); }
 .notifRowType { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary-2); }
 .notifRowBody { font-size: 14px; line-height: 1.45; }

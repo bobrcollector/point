@@ -10,22 +10,18 @@ import { IconFlag, IconLink, IconMessage, IconTelegram, IconVk, IconWhatsApp } f
 import { IconHeart, IconPencil, IconTrash } from '../components/NavGlyphs'
 import { useDeleteEvent } from '../features/organizer/queries'
 import { formatApiError } from '../lib/apiError'
-import { isCreatedByMe } from '../lib/eventInteractionStorage'
 import { useResolvedEventDetail } from '../features/catalog/useResolvedEventDetail'
-import { useSubmitComplaint } from '../features/notifications/queries'
 import {
-  addReview,
-  findUserReview,
-  isFavorite as readIsFavorite,
-  isParticipating as readIsParticipating,
-  readReviews,
-  toggleFavorite,
-  toggleParticipating,
-  type StoredReview
-} from '../lib/eventInteractionStorage'
+  useCreateEventReview,
+  useEventInteractions,
+  useEventReviews,
+  useSetEventFavorite,
+  useSetEventParticipation,
+  type EventReview,
+} from '../features/catalog/interactions'
+import { useSubmitComplaint } from '../features/notifications/queries'
 import { isEventPast } from '../lib/eventDatetime'
 import { getEventDetailBack } from '../lib/eventDetailBack'
-import { getDemoUser } from '../lib/userSession'
 
 type ReviewSort = 'newest' | 'oldest' | 'rating_desc' | 'rating_asc'
 
@@ -51,18 +47,23 @@ function eventShareUrl(eventId: string) {
   return `${window.location.origin}/events/${eventId}`
 }
 
-function sortReviews(list: StoredReview[], sort: ReviewSort): StoredReview[] {
+function reviewTime(review: EventReview): number {
+  const time = new Date(review.created_at).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+function sortReviews(list: EventReview[], sort: ReviewSort): EventReview[] {
   const copy = [...list]
   switch (sort) {
     case 'oldest':
-      return copy.sort((a, b) => a.at - b.at)
+      return copy.sort((a, b) => reviewTime(a) - reviewTime(b))
     case 'rating_desc':
-      return copy.sort((a, b) => b.rating - a.rating || b.at - a.at)
+      return copy.sort((a, b) => b.rating - a.rating || reviewTime(b) - reviewTime(a))
     case 'rating_asc':
-      return copy.sort((a, b) => a.rating - b.rating || a.at - b.at)
+      return copy.sort((a, b) => a.rating - b.rating || reviewTime(a) - reviewTime(b))
     case 'newest':
     default:
-      return copy.sort((a, b) => b.at - a.at)
+      return copy.sort((a, b) => reviewTime(b) - reviewTime(a))
   }
 }
 
@@ -70,17 +71,20 @@ export function EventDetailPage() {
   const { eventId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
+  const detailState = location.state as { organizerPreview?: boolean; archivedView?: boolean; eventStatus?: string } | null
   const isAuthed = Boolean(useAuthStore((s) => s.token))
   const authUser = useAuthStore((s) => s.user)
   const back = getEventDetailBack(location.state)
-  const q = useResolvedEventDetail(eventId)
+  const organizerPreview = Boolean(detailState?.organizerPreview)
+  const q = useResolvedEventDetail(eventId, organizerPreview)
   const d = q.data
-  const user = getDemoUser()
-  const reviewAuthorName = authUser?.display_name?.trim() || user.displayName
+  const numericEventId = eventId && /^\d+$/.test(eventId) ? Number(eventId) : null
+  const interactionsQuery = useEventInteractions()
+  const reviewsQuery = useEventReviews(organizerPreview ? null : numericEventId)
+  const setFavorite = useSetEventFavorite()
+  const setParticipation = useSetEventParticipation()
+  const createReview = useCreateEventReview(numericEventId)
 
-  const [fav, setFav] = useState(false)
-  const [going, setGoing] = useState(false)
-  const [reviewTick, setReviewTick] = useState(0)
   const [reviewSort, setReviewSort] = useState<ReviewSort>('newest')
   const [chatOpen, setChatOpen] = useState(false)
 
@@ -100,13 +104,6 @@ export function EventDetailPage() {
   const copyResetTimerRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    if (!eventId) return
-    setFav(readIsFavorite(eventId))
-    setGoing(readIsParticipating(eventId))
-    setReviewFormOpen(false)
-  }, [eventId])
-
-  useEffect(() => {
     return () => window.clearTimeout(copyResetTimerRef.current)
   }, [])
 
@@ -116,38 +113,35 @@ export function EventDetailPage() {
     const fromGallery = (d.gallery_urls ?? []).filter(Boolean)
     const merged = cover ? [cover, ...fromGallery] : fromGallery
     return [...new Set(merged)]
-  }, [d?.cover_image_url, d?.gallery_urls])
+  }, [d])
 
-  const reviews = useMemo(
-    () => (eventId ? readReviews(eventId) : []),
-    [eventId, reviewTick]
-  )
+  const fav = numericEventId ? interactionsQuery.data?.favorite_event_ids.includes(numericEventId) ?? false : false
+  const going = numericEventId ? interactionsQuery.data?.participating_event_ids.includes(numericEventId) ?? false : false
+
+  const reviews = useMemo(() => reviewsQuery.data ?? [], [reviewsQuery.data])
 
   const sortedReviews = useMemo(() => sortReviews(reviews, reviewSort), [reviews, reviewSort])
 
   const submitComplaint = useSubmitComplaint()
 
-  const userId = authUser?.id != null ? String(authUser.id) : null
-  const myReview = useMemo(
-    () => (eventId && userId ? findUserReview(eventId, userId) : undefined),
-    [eventId, userId, reviewTick]
-  )
+  const myReview = authUser?.id != null ? reviews.find((r) => r.user_id === authUser.id) : undefined
 
   const notFound = q.isLocal
     ? !q.isLoading && !d
     : isAxiosError(q.error) && q.error.response?.status === 404
 
-  const eventEnded = d ? isEventPast(d.event_datetime) : false
+  const isArchivedEvent = Boolean(
+    detailState?.archivedView || d?.status === 'archived' || detailState?.eventStatus === 'archived'
+  )
+  const eventEnded = d ? isArchivedEvent || isEventPast(d.event_datetime) : false
   const isOrganizer = Boolean(
-    isAuthed &&
+    organizerPreview ||
+      (isAuthed &&
       authUser?.id != null &&
-      eventId &&
-      (d?.organizer_id === authUser.id || isCreatedByMe(eventId))
+      d?.organizer_id === authUser.id)
   )
   const attended = going && eventEnded && !isOrganizer
   const canReview = isAuthed && eventEnded && going && !myReview && !isOrganizer
-  const numericEventId = eventId && /^\d+$/.test(eventId) ? Number(eventId) : null
-
   const shareUrl = useMemo(() => (eventId ? eventShareUrl(eventId) : ''), [eventId])
 
   const vkShare = useMemo(() => {
@@ -187,7 +181,7 @@ export function EventDetailPage() {
   if (notFound) {
     return (
       <div className="page eventDetailPage">
-        <Link className="eventDetailBack" to={back.to}>
+        <Link className="eventDetailBack" to={back.to} state={back.state}>
           {back.label}
         </Link>
         <div className="eventDetailPanel">
@@ -195,7 +189,7 @@ export function EventDetailPage() {
             Событие не найдено
           </h1>
           <p className="eventDetailMuted">Проверьте ссылку или вернитесь назад.</p>
-          <Link className="homePrimaryBtn" to={back.to} style={{ display: 'inline-flex', marginTop: 12 }}>
+          <Link className="homePrimaryBtn" to={back.to} state={back.state} style={{ display: 'inline-flex', marginTop: 12 }}>
             {back.label.replace(/^←\s*/, '')}
           </Link>
         </div>
@@ -206,14 +200,14 @@ export function EventDetailPage() {
   if (!q.isLocal && q.isError) {
     return (
       <div className="page eventDetailPage">
-        <Link className="eventDetailBack" to={back.to}>
+        <Link className="eventDetailBack" to={back.to} state={back.state}>
           {back.label}
         </Link>
         <div className="eventDetailPanel">
           <h1 className="eventDetailTitle" style={{ color: 'var(--text)' }}>
             Не удалось загрузить событие
           </h1>
-          <Link className="homePrimaryBtn" to={back.to} style={{ display: 'inline-flex', marginTop: 12 }}>
+          <Link className="homePrimaryBtn" to={back.to} state={back.state} style={{ display: 'inline-flex', marginTop: 12 }}>
             {back.label.replace(/^←\s*/, '')}
           </Link>
         </div>
@@ -224,7 +218,7 @@ export function EventDetailPage() {
   if (!d) {
     return (
       <div className="page eventDetailPage">
-        <Link className="eventDetailBack" to={back.to}>
+        <Link className="eventDetailBack" to={back.to} state={back.state}>
           {back.label}
         </Link>
         <p className="eventDetailMuted">{q.isFetching ? 'Загружаем событие…' : 'Данные события недоступны.'}</p>
@@ -255,12 +249,12 @@ export function EventDetailPage() {
   }
 
   const onToggleFav = () => {
-    if (!eventId || !requireAuth()) return
-    setFav(toggleFavorite(eventId))
+    if (!numericEventId || !requireAuth()) return
+    setFavorite.mutate({ eventId: numericEventId, enabled: !fav })
   }
 
   const onToggleGoing = () => {
-    if (!eventId || !requireAuth()) return
+    if (!numericEventId || !requireAuth()) return
     if (going) {
       if (
         !window.confirm(
@@ -270,21 +264,20 @@ export function EventDetailPage() {
         return
       }
     }
-    setGoing(toggleParticipating(eventId))
+    setParticipation.mutate({ eventId: numericEventId, enabled: !going })
   }
 
-  const onSubmitReview = (e: FormEvent) => {
+  const onSubmitReview = async (e: FormEvent) => {
     e.preventDefault()
-    if (!requireAuth() || !canReview || !userId) return
+    if (!requireAuth() || !canReview || !numericEventId) return
     const text = reviewText.trim()
     if (!text) return
     try {
-      addReview(eventId, userId, { author: reviewAuthorName, text, rating: reviewRating })
+      await createReview.mutateAsync({ text, rating: reviewRating })
       setReviewText('')
       setReviewFormOpen(false)
-      setReviewTick((x) => x + 1)
-    } catch {
-      setReviewFormOpen(false)
+    } catch (err) {
+      window.alert(formatApiError(err, 'Не удалось отправить отзыв'))
     }
   }
 
@@ -335,12 +328,12 @@ export function EventDetailPage() {
     })
   }
 
-  const chatDisplayName = authUser?.display_name?.trim() || getDemoUser().displayName || 'Гость'
+  const chatDisplayName = authUser?.display_name?.trim() || 'Гость'
   const chatAsOrganizer = isOrganizer
 
   return (
     <div className="page eventDetailPage">
-      <Link className="eventDetailBack" to={back.to}>
+      <Link className="eventDetailBack" to={back.to} state={back.state}>
         {back.label}
       </Link>
 
@@ -355,6 +348,11 @@ export function EventDetailPage() {
               <div className="badge" style={{ display: 'inline-flex' }}>
                 {d.categories?.[0]?.name ?? 'Событие'}
               </div>
+              {isArchivedEvent ? (
+                <div className="badge eventDetailArchivedBadge" style={{ display: 'inline-flex' }}>
+                  Завершено
+                </div>
+              ) : null}
               <AgeRatingBadge ageRatingMin={d.age_rating_min} />
             </div>
             <h1 className="eventDetailTitle">{d.title}</h1>
@@ -380,7 +378,7 @@ export function EventDetailPage() {
                 disabled
                 aria-pressed="true"
               >
-                Вы организатор
+                {isArchivedEvent ? 'Событие завершено' : 'Вы организатор'}
               </button>
             </div>
             <div className="eventDetailActionsSecondary eventDetailActionsOrganizerRight">
@@ -395,7 +393,7 @@ export function EventDetailPage() {
                 <IconMessage />
                 <span className="eventDetailBtnGhostLabel">Чат с участниками</span>
               </button>
-              {numericEventId ? (
+              {numericEventId && !isArchivedEvent ? (
                 <Link
                   className="eventDetailBtn eventDetailBtnIcon eventDetailBtnIconEdit"
                   to={`/events/${eventId}/edit`}
@@ -405,7 +403,7 @@ export function EventDetailPage() {
                   <IconPencil />
                 </Link>
               ) : null}
-              {numericEventId ? (
+              {numericEventId && !isArchivedEvent ? (
                 <button
                   type="button"
                   className="eventDetailBtn eventDetailBtnIcon eventDetailBtnIconDelete"
@@ -636,12 +634,12 @@ export function EventDetailPage() {
           </div>
 
           {reviews.length > 0 ? (
-            <div className="eventDetailReviewsList" key={`${reviewTick}-${reviewSort}`}>
+            <div className="eventDetailReviewsList" key={reviewSort}>
               {sortedReviews.map((r) => (
-                  <div key={r.id} className="eventDetailReviewItem">
+                  <div key={r.review_id} className="eventDetailReviewItem">
                     <div className="eventDetailReviewItemHead">
                       <div className="eventDetailChatAuthor">
-                        {r.author} · ★ {r.rating} · {new Date(r.at).toLocaleString('ru-RU')}
+                        {r.author} · ★ {r.rating} · {new Date(r.created_at).toLocaleString('ru-RU')}
                       </div>
                       {isOrganizer && numericEventId ? (
                         <button
@@ -653,7 +651,7 @@ export function EventDetailPage() {
                             if (requireAuth()) {
                               setReviewReportReason('spam')
                               setReviewReportDetails('')
-                              setReviewReportId(r.id)
+                              setReviewReportId(String(r.review_id))
                             }
                           }}
                         >

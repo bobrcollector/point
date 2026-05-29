@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic import Field
 
 
 class Category(BaseModel):
@@ -40,6 +41,36 @@ class EventDetail(EventItem):
     participants_count: int = 0
     requires_registration: bool = True
     ticket_types: list[TicketTypePublic] = []
+
+
+class EventInteractionState(BaseModel):
+    favorite_event_ids: list[int]
+    participating_event_ids: list[int]
+
+
+class EventInteractionUpdate(BaseModel):
+    enabled: bool
+
+
+class EventInteractionOut(BaseModel):
+    event_id: int
+    is_favorite: bool
+    is_participating: bool
+
+
+class EventReviewCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+    rating: int = Field(ge=1, le=5)
+
+
+class EventReviewOut(BaseModel):
+    review_id: int
+    event_id: int
+    user_id: int
+    author: str
+    text: str
+    rating: int
+    created_at: str
 
 
 class EventsResponse(BaseModel):

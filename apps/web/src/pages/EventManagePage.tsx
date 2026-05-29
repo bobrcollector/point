@@ -69,12 +69,16 @@ export function EventManagePage({ mode }: Props) {
   useEffect(() => {
     if (mode === 'edit' && detailQuery.data) {
       const loaded = detailToDraft(detailQuery.data)
+      // Existing edit flow needs to hydrate the wizard after async event loading.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft({ ...loaded, time: snapTimeToFiveMinutes(loaded.time) })
     }
   }, [mode, detailQuery.data])
 
   useEffect(() => {
     if (mode === 'create' && !draft.latitude) {
+      // Existing create flow preselects the current city once the city store is hydrated.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft((d) => ({ ...d, latitude: city.lat, longitude: city.lon }))
     }
   }, [mode, city.lat, city.lon, draft.latitude])
@@ -218,7 +222,12 @@ export function EventManagePage({ mode }: Props) {
       await queryClient.invalidateQueries({ queryKey: ['organizer', 'events'] })
       await queryClient.refetchQueries({ queryKey: ['organizer', 'events'] })
       if (publish) {
-        navigate(`/events/${savedId}`, { state: { from: '/my', label: '← Мои события' } })
+        navigate('/my/organized', {
+          state: {
+            notice: 'Событие успешно отправлено на модерацию',
+            period: 'moderation',
+          },
+        })
       } else {
         navigate('/my')
       }
@@ -243,11 +252,11 @@ export function EventManagePage({ mode }: Props) {
   }
 
   return (
-    <div className="page eventManagePage">
-      <div className="pageHeader">
+    <div className="page myEventsPage eventManagePage">
+      <header className="myEventsHeader">
         <div>
-          <div className="pageTitle">{mode === 'create' ? 'Создать событие' : 'Редактировать событие'}</div>
-          <div className="pageSub">Многошаговая форма для организаторов</div>
+          <h1 className="myEventsTitle">{mode === 'create' ? 'Создать событие' : 'Редактировать событие'}</h1>
+          <p className="eventDetailMuted">Многошаговая форма для организаторов</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {mode === 'edit' && eventId ? (
@@ -264,7 +273,7 @@ export function EventManagePage({ mode }: Props) {
             ← Мои события
           </Link>
         </div>
-      </div>
+      </header>
 
       <div className="eventWizardSteps" role="tablist" aria-label="Шаги формы">
         {STEPS.map((label, i) => (
@@ -316,6 +325,10 @@ export function EventManagePage({ mode }: Props) {
                 value={draft.description}
                 onChange={(e) => patch({ description: e.target.value })}
               />
+            </div>
+            <div className="eventWizardCategoryHead">
+              <span className="label">Категории событий</span>
+              <p className="pageSub">Выберите одну или несколько категорий, чтобы событие попало в нужные подборки.</p>
             </div>
             <div className="homeFilterPanel eventWizardFilterPanel">
               <div className="homeFilterCategoryGroups" role="group" aria-label="Категории">

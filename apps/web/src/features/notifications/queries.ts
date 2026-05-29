@@ -36,6 +36,17 @@ export function useMarkNotificationRead() {
   })
 }
 
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.put('/api/v1/notifications/read-all')
+      return z.array(NotificationSchema).parse(res.data)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+}
+
 export function useSubmitComplaint() {
   return useMutation({
     mutationFn: async (body: { event_id: number; reason: string }) => {

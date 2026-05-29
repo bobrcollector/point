@@ -1,6 +1,7 @@
 export type EventDetailBack = {
   to: string
   label: string
+  state?: unknown
 }
 
 const LABELS: Record<string, string> = {
@@ -14,9 +15,11 @@ const LABELS: Record<string, string> = {
 
 export function getEventDetailBack(state: unknown): EventDetailBack {
   if (state && typeof state === 'object' && 'from' in state) {
-    const from = (state as { from?: unknown }).from
+    const routeState = state as { from?: unknown; label?: unknown; backState?: unknown }
+    const from = routeState.from
     if (typeof from === 'string' && from.startsWith('/') && !from.startsWith('/events/')) {
-      return { to: from, label: LABELS[from] ?? '← Назад' }
+      const label = typeof routeState.label === 'string' ? routeState.label : LABELS[from] ?? '← Назад'
+      return { to: from, label, state: routeState.backState }
     }
   }
   return { to: '/', label: LABELS['/'] }

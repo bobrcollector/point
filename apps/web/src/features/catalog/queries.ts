@@ -1,8 +1,6 @@
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { api } from '../../lib/api'
-import { getLocalEventById, isLocalEventId } from '../../lib/eventInteractionStorage'
 import { resolveGalleryUrls, resolveMediaUrl } from '../../lib/mediaUrl'
 import type { ApiEventDetail, ApiEventItem, EventsResponse } from './types'
 
@@ -128,58 +126,5 @@ export function useEventDetail(eventId: string | undefined) {
     ...catalogEventDetailQueryOptions(eventId ?? ''),
     enabled
   })
-}
-
-export type StoredEventCard = {
-  id: string
-  title: string
-  date: string
-  place: string
-  price: number
-  coverUrl?: string
-  categories?: string[]
-  ageRatingMin?: number
-}
-
-export function useStoredEventCards(ids: string[]): StoredEventCard[] {
-  const eventsQuery = useEvents({ limit: 100, offset: 0, sort_by: 'date' })
-
-  return useMemo(() => {
-    if (!ids.length) return []
-    const idSet = new Set(ids)
-    const fromApi =
-      eventsQuery.data?.items
-        .filter((it) => idSet.has(String(it.event_id)))
-        .map((it) => ({
-          id: String(it.event_id),
-          title: it.title,
-          date: it.event_datetime,
-          place: it.location,
-          price: it.price,
-          coverUrl: it.cover_image_url ?? undefined,
-          categories: it.categories?.map((c) => c.name) ?? [],
-          ageRatingMin: it.age_rating_min
-        })) ?? []
-
-    const apiIds = new Set(fromApi.map((e) => e.id))
-    const fromLocal = ids
-      .filter((id) => isLocalEventId(id) && !apiIds.has(id))
-      .map((id) => getLocalEventById(id))
-      .filter((row): row is NonNullable<typeof row> => Boolean(row))
-      .map((row) => ({
-        id: row.id,
-        title: row.title,
-        date: row.event_datetime,
-        place: row.location,
-        price: row.price,
-        coverUrl: row.cover_image_url ?? undefined,
-        categories: row.categories.map((c: { name: string }) => c.name),
-        ageRatingMin: row.age_rating_min
-      }))
-
-    const merged = [...fromApi, ...fromLocal]
-    const order = new Map(ids.map((id, i) => [id, i]))
-    return merged.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
-  }, [ids, eventsQuery.data?.items])
 }
 

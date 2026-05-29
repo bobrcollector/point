@@ -1,4 +1,4 @@
-export type EventStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled'
+export type EventStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled' | 'archived'
 
 export type TicketTypeDraft = {
   name: string
@@ -39,6 +39,7 @@ export type OrganizerEventListItem = {
 
 export type OrganizerEventDetail = {
   event_id: number
+  organizer_id?: number | null
   title: string
   description: string
   location: string

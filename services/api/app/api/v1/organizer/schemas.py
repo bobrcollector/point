@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-EventStatus = Literal["draft", "pending", "approved", "rejected", "cancelled"]
+EventStatus = Literal["draft", "pending", "approved", "rejected", "cancelled", "archived"]
 
 
 class TicketTypeIn(BaseModel):

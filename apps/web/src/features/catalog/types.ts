@@ -33,6 +33,7 @@ export type ApiEventDetail = ApiEventItem & {
   address_detail: string
   organizer_id?: number | null
   organizer_name: string
+  status?: string
   gallery_urls: string[]
   participants_count: number
   requires_registration?: boolean

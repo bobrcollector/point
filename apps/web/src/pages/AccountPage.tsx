@@ -21,16 +21,16 @@ function AccountContent() {
   const roleLabel = profile.role === 'admin' ? ROLE_LABELS.admin : null
 
   return (
-    <div className="page accountPage">
-      <div className="pageHeader accountHeader">
+    <div className="page myEventsPage accountPage">
+      <header className="myEventsHeader accountHeader">
         <div>
-          <div className="pageTitle">Профиль</div>
-          <div className="pageSub">Ваши данные и интересы для подбора мероприятий</div>
+          <h1 className="myEventsTitle">Профиль</h1>
+          <p className="eventDetailMuted">Ваши данные и интересы для подбора мероприятий</p>
         </div>
         <Link className="homePrimaryBtn" to="/settings">
-          Редактировать
+          Настройки профиля
         </Link>
-      </div>
+      </header>
 
       <section className="profileViewCard">
         <div className="profileViewHero">
@@ -80,13 +80,6 @@ function AccountContent() {
         </div>
       </section>
 
-      <section className="profileViewCard">
-        <h2 className="accountSectionTitle">Мои события</h2>
-        <p className="profileViewHint">Создавайте и публикуйте мероприятия — после отправки они проходят модерацию</p>
-        <Link to="/create" className="homePrimaryBtn" style={{ display: 'inline-flex', marginTop: 8 }}>
-          Создать событие
-        </Link>
-      </section>
     </div>
   )
 }
