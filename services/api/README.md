@@ -35,9 +35,9 @@ DATABASE_URL=postgresql+asyncpg://point:point@127.0.0.1:5433/point
 ### Демо-данные
 
 - Пользователь: `dev@point-demo.ru` / `dev12345` (роль admin)  
-- События id 101–114 в статусе `approved` (видны в ленте)  
+- События id 101–130 в статусе `approved` (видны в ленте)  
 
-Повторный `npm run db:seed` не дублирует события.
+Повторный `npm run db:seed` не дублирует события, но обновляет даты и добавляет новые id из seed.
 
 ## Python venv (вручную)
 
