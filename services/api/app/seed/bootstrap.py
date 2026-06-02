@@ -34,13 +34,13 @@ def _cover_url(eid: int, raw: dict[str, object]) -> str:
     return _picsum_cover(eid)
 
 
-def _detail_fields(eid: int, title: str, venue: str) -> tuple[str, str, str, list[str], int]:
+def _detail_fields(eid: int, title: str, venue: str, city: str = "Москва") -> tuple[str, str, str, list[str], int]:
     description = (
         f"«{title}» — живое офлайн-мероприятие на площадке «{venue}». "
         "На странице собраны дата и время, точка на карте и контакты организатора. "
         "Вы можете отметить участие, написать в чат другим гостям и оставить отзыв после события."
     )
-    address_detail = f"{venue}, Москва — вход по электронному билету или списку участников."
+    address_detail = f"{venue}, {city} — вход по электронному билету или списку участников."
     organizer_name = "Point Community" if eid % 2 == 0 else "Городские инициативы"
     gallery_urls = _picsum_gallery(eid)
     participants_count = 18 + (eid % 55)
@@ -51,7 +51,8 @@ def _event_from_seed(raw: dict[str, object], dev_user_id: int, cats: dict[int, C
     eid = int(raw["id"])
     title = str(raw["title"])
     venue = str(raw["location"])
-    desc, addr, org_name, gallery, p_count = _detail_fields(eid, title, venue)
+    city = str(raw.get("city", "Москва"))
+    desc, addr, org_name, gallery, p_count = _detail_fields(eid, title, venue, city)
     cat_id = int(raw["category_id"])
     ev = Event(
         id=eid,
