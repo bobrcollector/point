@@ -25,6 +25,8 @@ def _event_to_list_item(ev: Event) -> dict:
         "event_datetime": ev.event_datetime,
         "location": ev.location,
         "status": ev.status,
+        "is_hidden": bool(ev.is_hidden),
+        "moderation_reason": ev.moderation_reason,
         "price": float(ev.price),
         "cover_image_url": abs_media_url(ev.cover_image_url),
         "categories": [{"id": c.id, "name": c.name} for c in ev.categories],
@@ -42,6 +44,8 @@ def _event_to_detail(ev: Event) -> dict:
         "address_detail": ev.address_detail,
         "event_datetime": ev.event_datetime,
         "status": ev.status,
+        "is_hidden": bool(ev.is_hidden),
+        "moderation_reason": ev.moderation_reason,
         "price": float(ev.price),
         "cover_image_url": abs_media_url(ev.cover_image_url),
         "gallery_urls": [u for u in (abs_media_url(str(x)) for x in g) if u],
@@ -50,6 +54,7 @@ def _event_to_detail(ev: Event) -> dict:
         "is_for_children": bool(ev.is_for_children),
         "age_rating_min": int(ev.age_rating_min),
         "requires_registration": bool(ev.requires_registration),
+        "participants_count": int(ev.participants_count or 0),
         "organizer_name": ev.organizer_name,
         "category_ids": [c.id for c in ev.categories],
         "categories": [{"id": c.id, "name": c.name} for c in ev.categories],
@@ -153,6 +158,8 @@ async def update_event(
     data = payload.model_dump(exclude_unset=True)
     ticket_rows = data.pop("ticket_types", None)
     category_ids = data.pop("category_ids", None)
+    # Статус меняют только publish / модерация / finish — не PATCH из формы редактирования.
+    data.pop("status", None)
 
     for key, value in data.items():
         if key == "title" and value is not None:
@@ -202,6 +209,8 @@ async def publish_event(session: AsyncSession, organizer_id: int, event_id: int)
         if not named:
             raise HTTPException(status_code=400, detail="Добавьте хотя бы один тип билета")
     ev.status = "pending"
+    ev.moderation_reason = None
+    ev.is_hidden = False
     ev.updated_at = now
     await session.flush()
     return ev

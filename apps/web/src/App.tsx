@@ -3,20 +3,20 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import {
+  IconBell,
   IconCalendar,
+  IconCheckCircle,
   IconChevronRight,
   IconFeed,
-  IconBell,
   IconHeart,
   IconLogIn,
   IconLogOut,
   IconMenu,
   IconPlusSquare,
-  IconShield,
+  IconSliders,
   IconUser,
 } from './components/NavGlyphs'
 import { BrandLogo } from './components/BrandLogo'
-import { HomeCitySelect } from './components/HomeCitySelect'
 import { ScrollToTop } from './components/ScrollToTop'
 import { SidebarCitySelect } from './components/SidebarCitySelect'
 import { useQueryClient } from '@tanstack/react-query'
@@ -36,14 +36,18 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { AccountPage } from './pages/AccountPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { ADMIN_SUBNAV } from './pages/adminNav'
 import { AdminPage } from './pages/AdminPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { RequireAuth } from './components/RequireAuth'
 import { useMe } from './features/auth/queries'
 import { canModerate } from './features/auth/types'
+import { isAdminHostAllowed } from './lib/adminAccess'
 import { useNotifications } from './features/notifications/queries'
+import { syncPushSubscription, syncPushSubscriptionFromSwMessage } from './lib/push'
 import { useAuthStore } from './stores/authStore'
 import { useCityStore } from './stores/cityStore'
+import { getMobileScreenTitle } from './lib/mobileScreenTitle'
 
 type NavGlyph = ComponentType<SVGProps<SVGSVGElement>>
 
@@ -54,11 +58,6 @@ type NavDef = {
   label: string
   Icon: NavGlyph
   variant?: 'default' | 'cta'
-}
-
-type NavGroup = {
-  title: string
-  items: NavDef[]
 }
 
 const MY_EVENTS_NAV_ICONS: Record<string, NavGlyph> = {
@@ -74,27 +73,90 @@ const MY_EVENTS_NAV: NavDef[] = MY_EVENTS_SUBNAV.map((item) => ({
   Icon: MY_EVENTS_NAV_ICONS[item.to] ?? IconCalendar,
 }))
 
-const MENU_ITEMS: NavDef[] = [
-  { to: '/', end: true, title: 'Лента и поиск', label: 'Лента', Icon: IconFeed },
-  { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart },
-  { to: '/notifications', title: 'Уведомления', label: 'Уведомления', Icon: IconBell },
-]
+const FEED_NAV: NavDef = { to: '/', end: true, title: 'Лента и поиск', label: 'Лента', Icon: IconFeed }
 
-const MENU_GROUPS: NavGroup[] = [{ title: 'Мои события', items: MY_EVENTS_NAV }]
+const FAVORITES_NAV: NavDef = { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart }
 
-const SERVICE_ITEMS: NavDef[] = [{ to: '/admin', title: 'Админ-панель', label: 'Админ', Icon: IconShield }]
+const NOTIFICATIONS_NAV: NavDef = {
+  to: '/notifications',
+  title: 'Уведомления',
+  label: 'Уведомления',
+  Icon: IconBell,
+}
+
+const ADMIN_NAV_ICONS: Record<string, NavGlyph> = {
+  '/admin/dashboard': IconSliders,
+  '/admin/users': IconUser,
+  '/admin/pending': IconCheckCircle,
+  '/admin/complaints': IconBell,
+}
+
+const ADMIN_NAV: NavDef[] = ADMIN_SUBNAV.map((item) => ({
+  to: item.to,
+  title: item.label,
+  label: item.label,
+  Icon: ADMIN_NAV_ICONS[item.to] ?? IconSliders,
+}))
 
 const LOGIN_NAV: NavDef = { to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' }
 
-const PROFILE_PATHS = new Set(['/account', '/settings', '/login'])
+function isMobileMenuRoute(pathname: string, showAdmin: boolean) {
+  if (pathname.startsWith('/my')) return true
+  if (pathname.startsWith('/favorites')) return true
+  if (pathname.startsWith('/settings')) return true
+  if (pathname.startsWith('/notifications')) return true
+  if (pathname.startsWith('/login') || pathname.startsWith('/register')) return true
+  if (pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) return true
+  if (pathname.startsWith('/verify-email')) return true
+  if (pathname.startsWith('/create')) return true
+  if (pathname.startsWith('/events/') && pathname.endsWith('/edit')) return true
+  if (showAdmin && pathname.startsWith('/admin')) return true
+  return false
+}
 
-/** Город и логотип на мобильных (сайдбар скрыт). На главной скрывается — город в тулбаре. */
-function MobileTopBar() {
-  return (
-    <header className="mobileTopBar" aria-label="Город">
-      <BrandLogo />
-      <HomeCitySelect />
-    </header>
+function isMobileProfileRoute(pathname: string, isAuthed: boolean) {
+  if (pathname.startsWith('/account')) return true
+  if (isAuthed && pathname.startsWith('/settings')) return true
+  if (!isAuthed && pathname === '/login') return true
+  return false
+}
+
+function MobileTopBar({
+  isAuthed,
+  hasUnreadNotifications,
+}: {
+  isAuthed: boolean
+  hasUnreadNotifications: boolean
+}) {
+  const location = useLocation()
+  const title = getMobileScreenTitle(location.pathname)
+
+  return createPortal(
+    <header className="mobileTopBar" aria-label="Навигация">
+      <div className="mobileTopBarInner">
+        <NavLink to="/" end className="mobileTopBarLogo" title="На главную" aria-label="Point — на главную">
+          <BrandLogo className="brandLogoPurple" />
+        </NavLink>
+        <h1 className="mobileTopBarTitle">{title}</h1>
+        {isAuthed ? (
+          <NavLink
+            to="/notifications"
+            state={location.pathname.startsWith('/notifications') ? undefined : { from: location.pathname }}
+            className={({ isActive }: { isActive: boolean }) =>
+              isActive ? 'mobileTopBarNotif active' : 'mobileTopBarNotif'
+            }
+            title="Уведомления"
+            aria-label="Уведомления"
+          >
+            <IconBell />
+            {hasUnreadNotifications ? <span className="navUnreadDot" /> : null}
+          </NavLink>
+        ) : (
+          <span className="mobileTopBarSpacer" aria-hidden />
+        )}
+      </div>
+    </header>,
+    document.body
   )
 }
 
@@ -121,11 +183,9 @@ function navLinkClass(item: NavDef) {
 function MobileBottomNav({
   isAuthed,
   showAdmin,
-  hasUnreadNotifications,
 }: {
   isAuthed: boolean
   showAdmin: boolean
-  hasUnreadNotifications: boolean
 }) {
   const location = useLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -133,13 +193,9 @@ function MobileBottomNav({
   const sheetTitleId = useId()
   const sheetLinks = [
     ...(isAuthed ? MY_EVENTS_NAV : []),
-    ...(isAuthed
-      ? [
-          { to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart },
-          { to: '/notifications', title: 'Уведомления', label: 'Уведомления', Icon: IconBell },
-        ]
-      : []),
-    ...(showAdmin ? [{ to: '/admin', title: 'Админ-панель', label: 'Админ-панель', Icon: IconShield }] : []),
+    ...(isAuthed ? [{ to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart }] : []),
+    ...(isAuthed ? [{ to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSliders }] : []),
+    ...(showAdmin ? ADMIN_NAV : []),
     ...(isAuthed ? [] : [{ to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' as const }]),
   ]
 
@@ -163,14 +219,26 @@ function MobileBottomNav({
     }
   }, [sheetOpen, closeSheet])
 
-  const profileActive = PROFILE_PATHS.has(location.pathname)
-  const moreActive = location.pathname !== '/' && !profileActive
-  const menuTabActive = sheetOpen || moreActive
+  const feedActive = location.pathname === '/'
+  const profileActive = isMobileProfileRoute(location.pathname, isAuthed)
+  const menuTabActive = sheetOpen || isMobileMenuRoute(location.pathname, showAdmin)
 
   return createPortal(
     <>
       <nav className="mobileTabBar" aria-label="Основная навигация">
         <div className="mobileTabBarTrack">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }: { isActive: boolean }) => (isActive || feedActive ? 'mobileTabItem active' : 'mobileTabItem')}
+            title="Лента и поиск"
+          >
+            <span className="mobileTabIcon" aria-hidden>
+              <IconFeed />
+            </span>
+            <span className="mobileTabLabel">Лента</span>
+          </NavLink>
+
           <button
             ref={menuBtnRef}
             type="button"
@@ -187,21 +255,9 @@ function MobileBottomNav({
           </button>
 
           <NavLink
-            to="/"
-            end
-            className={({ isActive }: { isActive: boolean }) => (isActive ? 'mobileTabItem active' : 'mobileTabItem')}
-            title="Лента и поиск"
-          >
-            <span className="mobileTabIcon" aria-hidden>
-              <IconFeed />
-            </span>
-            <span className="mobileTabLabel">Лента</span>
-          </NavLink>
-
-          <NavLink
             to={isAuthed ? '/account' : '/login'}
             className={() => (profileActive ? 'mobileTabItem active' : 'mobileTabItem')}
-            title={isAuthed ? 'Аккаунт' : 'Вход'}
+            title={isAuthed ? 'Мой профиль' : 'Вход'}
           >
             <span className="mobileTabIcon" aria-hidden>
               <IconUser />
@@ -248,7 +304,6 @@ function MobileBottomNav({
             >
               <span className="mobileSheetLinkIcon" aria-hidden>
                 <item.Icon />
-                {item.to === '/notifications' && hasUnreadNotifications ? <span className="navUnreadDot" /> : null}
               </span>
               <span className="mobileSheetLinkText">{item.label}</span>
             </NavLink>
@@ -261,6 +316,7 @@ function MobileBottomNav({
 }
 
 export default function App() {
+  const location = useLocation()
   const qc = useQueryClient()
   const hydrate = useCityStore((s) => s.hydrate)
   const detectCityFromGeolocation = useCityStore((s) => s.detectCityFromGeolocation)
@@ -281,11 +337,35 @@ export default function App() {
   }, [hydrate, detectCityFromGeolocation, hydrateAuth, qc])
 
   useEffect(() => {
-    if (meQ.data) setUser(meQ.data)
+    if (!meQ.data) return
+    const current = useAuthStore.getState().user
+    if (current?.id === meQ.data.id && current.email === meQ.data.email && current.role === meQ.data.role) {
+      return
+    }
+    setUser(meQ.data)
   }, [meQ.data, setUser])
 
-  const isAuthed = Boolean(token && user)
-  const showAdmin = canModerate(user?.role)
+  useEffect(() => {
+    if (!token || !user?.notify_push) return
+    const id = window.setTimeout(() => {
+      void syncPushSubscription()
+    }, 2_000)
+    return () => window.clearTimeout(id)
+  }, [token, user?.notify_push])
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onSwMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; subscription?: PushSubscriptionJSON } | null
+      if (data?.type !== 'push-subscription-changed' || !data.subscription || !token) return
+      void syncPushSubscriptionFromSwMessage(data.subscription)
+    }
+    navigator.serviceWorker.addEventListener('message', onSwMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onSwMessage)
+  }, [token])
+
+  const isAuthed = Boolean(token)
+  const showAdmin = canModerate(user?.role) && isAdminHostAllowed()
   const hasUnreadNotifications = Boolean(notificationsQ.data?.some((item) => !item.is_read))
 
   return (
@@ -299,20 +379,17 @@ export default function App() {
         <div className="sidebarBody">
           <nav className="nav navPrimary" aria-label="Основные разделы">
             <div className="navGroupTitle">Меню</div>
-            {MENU_ITEMS.filter((item) => isAuthed || (item.to !== '/favorites' && item.to !== '/notifications')).map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClass(item)} title={item.title}>
-                <span className="navIcon navIconWithBadge" aria-hidden>
-                  <item.Icon />
-                  {item.to === '/notifications' && hasUnreadNotifications ? <span className="navUnreadDot" /> : null}
-                </span>
-                <span className="navItemLabel">{item.label}</span>
-              </NavLink>
-            ))}
+            <NavLink to={FEED_NAV.to} end={FEED_NAV.end} className={navLinkClass(FEED_NAV)} title={FEED_NAV.title}>
+              <span className="navIcon" aria-hidden>
+                <FEED_NAV.Icon />
+              </span>
+              <span className="navItemLabel">{FEED_NAV.label}</span>
+            </NavLink>
 
-            {isAuthed ? MENU_GROUPS.map((group) => (
-              <div key={group.title} className="navSubmenu">
-                <div className="navGroupTitle">{group.title}</div>
-                {group.items.map((item) => (
+            {isAuthed ? (
+              <div className="navSubmenu">
+                <div className="navGroupTitle">Мои события</div>
+                {MY_EVENTS_NAV.map((item) => (
                   <NavLink key={item.to} to={item.to} className={navLinkClass(item)} title={item.title}>
                     <span className="navIcon" aria-hidden>
                       <item.Icon />
@@ -321,14 +398,23 @@ export default function App() {
                   </NavLink>
                 ))}
               </div>
-            )) : null}
+            ) : null}
+
+            {isAuthed ? (
+              <NavLink to={FAVORITES_NAV.to} className={navLinkClass(FAVORITES_NAV)} title={FAVORITES_NAV.title}>
+                <span className="navIcon" aria-hidden>
+                  <FAVORITES_NAV.Icon />
+                </span>
+                <span className="navItemLabel">{FAVORITES_NAV.label}</span>
+              </NavLink>
+            ) : null}
 
             <div className="navSpacer" />
 
             {showAdmin ? (
-              <>
-                <div className="navGroupTitle">Сервис</div>
-                {SERVICE_ITEMS.map((item) => (
+              <div className="navSubmenu">
+                <div className="navGroupTitle">Админ</div>
+                {ADMIN_NAV.map((item) => (
                   <NavLink key={item.to} to={item.to} className={navLinkClass(item)} title={item.title}>
                     <span className="navIcon" aria-hidden>
                       <item.Icon />
@@ -336,12 +422,28 @@ export default function App() {
                     <span className="navItemLabel">{item.label}</span>
                   </NavLink>
                 ))}
-              </>
+              </div>
             ) : null}
           </nav>
         </div>
 
         <div className="sidebarFooter">
+          {isAuthed ? (
+            <nav className="nav navFooter" aria-label="Уведомления">
+              <NavLink
+                to={NOTIFICATIONS_NAV.to}
+                state={location.pathname.startsWith('/notifications') ? undefined : { from: location.pathname }}
+                className={navLinkClass(NOTIFICATIONS_NAV)}
+                title={NOTIFICATIONS_NAV.title}
+              >
+                <span className="navIcon navIconWithBadge" aria-hidden>
+                  <NOTIFICATIONS_NAV.Icon />
+                  {hasUnreadNotifications ? <span className="navUnreadDot" /> : null}
+                </span>
+                <span className="navItemLabel">{NOTIFICATIONS_NAV.label}</span>
+              </NavLink>
+            </nav>
+          ) : null}
           <div className="footerDivider" role="presentation" />
           <NavLink
             to={isAuthed ? '/account' : '/login'}
@@ -398,7 +500,6 @@ export default function App() {
 
       <main className="main">
         <ScrollToTop />
-        <MobileTopBar />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/events/:eventId" element={<EventDetailRoute />} />
@@ -461,7 +562,7 @@ export default function App() {
             }
           />
           <Route
-            path="/admin"
+            path="/admin/*"
             element={
               <RequireAuth roles={['admin']}>
                 <AdminPage />
@@ -478,7 +579,8 @@ export default function App() {
         </Routes>
       </main>
 
-      <MobileBottomNav isAuthed={isAuthed} showAdmin={showAdmin} hasUnreadNotifications={hasUnreadNotifications} />
+      <MobileTopBar isAuthed={isAuthed} hasUnreadNotifications={hasUnreadNotifications} />
+      <MobileBottomNav isAuthed={isAuthed} showAdmin={showAdmin} />
     </div>
   )
 }

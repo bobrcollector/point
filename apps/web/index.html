@@ -17,6 +17,57 @@
     <meta name="apple-mobile-web-app-title" content="Point" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <title>Point — Афиша событий</title>
+    <style>
+      body {
+        margin: 0;
+        background: #f7f7fb;
+        color: #14151a;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+      }
+      #root {
+        min-height: 100svh;
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var port = location.port
+          if (port !== '5173' && port !== '4173') return
+          var host = location.hostname
+          var lan = /^192\.168\.|^10\./.test(host)
+          var local = host === 'localhost' || host === '127.0.0.1'
+          if (!lan && !local) return
+          if (!('serviceWorker' in navigator)) return
+          if (sessionStorage.getItem('point:lan-sw-purge') === '1') return
+
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            var needsPurge = regs.some(function (reg) {
+              var url =
+                (reg.active && reg.active.scriptURL) ||
+                (reg.installing && reg.installing.scriptURL) ||
+                (reg.waiting && reg.waiting.scriptURL) ||
+                ''
+              return url.indexOf('push-sw') === -1
+            })
+            if (!needsPurge) return
+
+            return Promise.all(regs.map(function (r) { return r.unregister() }))
+              .then(function () {
+                if (!('caches' in window)) return
+                return caches.keys().then(function (keys) {
+                  return Promise.all(keys.map(function (k) { return caches.delete(k) }))
+                })
+              })
+              .then(function () {
+                sessionStorage.setItem('point:lan-sw-purge', '1')
+                location.reload()
+              })
+          })
+        } catch (e) {
+          /* ignore */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

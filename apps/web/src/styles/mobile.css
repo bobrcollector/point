@@ -4,33 +4,136 @@
  */
 
 @media (max-width: 720px) {
-  .mobileTopBar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-    padding: 10px 12px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+  /* ——— PWA: контент на всю ширину экрана ——— */
+  #root,
+  .appShell {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
   }
 
-  .mobileTopBar .brandLogo {
-    width: 28px;
-    height: 26px;
-    flex-shrink: 0;
+  .main {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
-  .mobileTopBar .homeCityDropdown {
-    flex: 1;
+  .main > * {
+    max-width: 100%;
     min-width: 0;
-    justify-content: flex-end;
+    box-sizing: border-box;
   }
 
-  /* На главной город уже в тулбаре */
-  .homePage .mobileTopBar {
+  .page,
+  .homePage,
+  .authPage,
+  .myEventsPage,
+  .accountPage,
+  .adminPage,
+  .notificationsPage,
+  .eventManagePage,
+  .settingsPage,
+  .eventDetailPage {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow-x: clip;
+  }
+
+  .accountPage,
+  .adminPage,
+  .notificationsPage,
+  .eventManagePage,
+  .settingsPage {
+    padding-block: 0 20px;
+  }
+
+  .cardTitle,
+  .eventDetailTitle,
+  .cardMeta,
+  .muted,
+  .notifRowBody,
+  .adminCardDesc,
+  .organizerEventCardRejectedReason,
+  .profileViewName,
+  .profileViewText {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  .myEventsPage .myEventsHeader,
+  .eventManagePage .myEventsHeader,
+  .adminPage .myEventsHeader,
+  .accountPage .accountHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .eventManagePage .myEventsHeader > div:last-child,
+  .adminPage .myEventsHeader > .homeGhostBtn {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .myEventsPage .myEventsHeader .homeGhostBtn,
+  .myEventsPage .myEventsHeader .homePrimaryBtn,
+  .adminPage .myEventsHeader .homeGhostBtn,
+  .eventManagePage .myEventsHeader .homeGhostBtn,
+  .eventManagePage .myEventsHeader .eventDetailBtn,
+  .accountPage .accountHeader .homePrimaryBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .myEventsHeader .eventDetailMuted,
+  .eventManagePage .myEventsHeader > div > .eventDetailMuted {
+    display: none;
+  }
+
+  .eventManagePage .myEventsHeader .organizerEventRejectedBanner {
+    display: block;
+  }
+
+  .organizerEventRejectedBanner .eventDetailMuted {
+    display: block;
+  }
+
+  .myEventsPage > .myEventsHeader .myEventsTitle,
+  .notificationsPage > .myEventsHeader .myEventsTitle,
+  .accountPage > .myEventsHeader .myEventsTitle,
+  .settingsPage > .myEventsHeader .myEventsTitle,
+  .eventManagePage > .myEventsHeader .myEventsTitle,
+  .adminPage > .myEventsHeader .myEventsTitle,
+  .pageTitle,
+  .authTitle {
+    display: none;
+  }
+
+  .myEventsPage > .myEventsHeader:has(> .myEventsTitle):not(:has(> :not(.myEventsTitle))) {
+    display: none;
+  }
+
+  .myEventsPage > .myEventsHeader,
+  .notificationsPage > .myEventsHeader,
+  .accountPage > .myEventsHeader,
+  .settingsPage > .myEventsHeader,
+  .eventManagePage > .myEventsHeader {
+    margin-bottom: 0;
+  }
+
+  .authBrand {
     display: none;
   }
 
@@ -51,11 +154,67 @@
 
   .homeShell {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .homePage .footer {
+    display: none;
+  }
+
+  .homePage .eventGridWrap .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .homeEmptySearch {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .homeToolbarTrailing {
+    width: 100%;
+    margin-left: 0;
+    justify-content: center;
+  }
+
+  .myEventsNotice {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .myEventsEmpty {
+    padding: 16px;
+  }
+
+  .myEventsBackLink,
+  .eventDetailBack {
+    max-width: 100%;
+    font-size: 13px;
   }
 
   /* ——— Событие ——— */
   .eventDetailPage {
-    padding: 0 0 28px;
+    padding: 0 0 20px;
+  }
+
+  .eventDetailHero,
+  .eventDetailPanel {
+    border-radius: 16px;
+  }
+
+  .eventDetailInfoGrid > .eventDetailPanel,
+  .eventDetailInfoGrid > .eventDetailGridPrice,
+  .eventDetailInfoGrid > .eventDetailGridShare,
+  .eventDetailInfoGrid > .eventDetailGridOrg {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .organizerEventRejectedBanner {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .eventDetailHeroMain {
@@ -260,10 +419,29 @@
   .eventWizardPanel {
     padding: 14px;
     border-radius: 16px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .eventWizardMap {
-    min-height: 260px;
+    min-height: min(260px, 42svh);
+    width: 100%;
+  }
+
+  .eventWizardTicketRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .eventWizardTicketRow .eventDetailBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .eventWizardPanel .pointDropdown,
+  .accountSection .pointDropdown,
+  .eventDetailPanel .pointDropdown {
+    width: 100%;
   }
 
   .eventWizardNav {
@@ -291,38 +469,37 @@
     margin-bottom: 4px;
   }
 
+  .myEventsTimeSegWrapTop {
+    margin-bottom: 10px;
+  }
+
+  .myEventsTimeSegWrapTop .myEventsTimeSeg {
+    max-width: none;
+    width: 100%;
+  }
+
+  .myEventsTimeSegWrapTop .myEventsTimeSeg .segBtn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .myEventsToolbar {
+    display: none;
+  }
+
   .myEventsTitle {
     font-size: 24px;
   }
 
-  .myEventsToolbar {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .myEventsSubnav {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .myEventsSubnavLink,
-  .myEventsSubnav button.myEventsSubnavLink {
-    flex: 1;
-    text-align: center;
-    padding: 10px 8px;
-    font-size: 13px;
-  }
-
-  .myEventsCreateFab {
-    flex-shrink: 0;
-    width: 48px;
-    height: 48px;
-  }
-
   .myEventsGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+  }
+
+  .organizerEventCard:hover,
+  .eventListCard:hover,
+  .homePage .card:hover {
+    transform: none;
   }
 
   .organizerEventCardActions {
@@ -332,7 +509,7 @@
 
   .organizerEventCardIconRow {
     margin-left: 0;
-    justify-content: flex-end;
+    justify-content: center;
   }
 
   .mapEventCardBtn,
@@ -344,11 +521,20 @@
   .authPage {
     padding: 0;
     max-width: none;
+    min-height: calc(100dvh - 152px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    justify-content: center;
   }
 
   .authCard {
+    width: 100%;
     padding: 16px;
     border-radius: 20px;
+    box-sizing: border-box;
+  }
+
+  .authSub {
+    font-size: 14px;
+    line-height: 1.45;
   }
 
   .authTitle {
@@ -420,12 +606,21 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .adminStatSection {
+    padding: 14px;
+  }
+
   .adminChartsRow {
     grid-template-columns: 1fr;
   }
 
+  .adminPage {
+    padding-bottom: 16px;
+  }
+
   .adminCard {
     padding: 14px;
+    min-width: 0;
   }
 
   .adminCardHead {
@@ -436,6 +631,38 @@
   .adminCardBtns {
     width: 100%;
     flex-direction: column;
+  }
+
+  .adminMetricsGrid {
+    gap: 8px;
+  }
+
+  .adminMetricTile {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .adminStatSection {
+    padding: 14px;
+    min-width: 0;
+  }
+
+  .adminChartWrap {
+    --admin-chart-plot-h: min(180px, 32svh);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .adminChartMain {
+    min-width: min(100%, 260px);
+  }
+
+  .adminModal {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 20px 20px 0 0;
   }
 
   .adminCardBtns .eventDetailBtn,
@@ -452,6 +679,11 @@
 
   .notifRow {
     padding: 12px 14px;
+    min-width: 0;
+  }
+
+  .notifList {
+    width: 100%;
   }
 
   /* ——— Карточки ленты ——— */
@@ -502,5 +734,15 @@
   .eventDetailBtnToggle,
   .eventDetailBtnIcon {
     min-height: 44px;
+  }
+
+  .profileTypePicker,
+  .eventTimeRow {
+    grid-template-columns: 1fr;
+  }
+
+  .photoLightboxImg {
+    max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    object-fit: contain;
   }
 }

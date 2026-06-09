@@ -66,6 +66,8 @@ class OrganizerEventListItem(BaseModel):
     event_datetime: datetime
     location: str
     status: EventStatus
+    is_hidden: bool = False
+    moderation_reason: str | None = None
     price: float
     cover_image_url: str | None
     categories: list[dict[str, int | str]]
@@ -85,6 +87,8 @@ class OrganizerEventDetail(BaseModel):
     address_detail: str
     event_datetime: datetime
     status: EventStatus
+    is_hidden: bool = False
+    moderation_reason: str | None = None
     price: float
     cover_image_url: str | None
     gallery_urls: list[str]
@@ -93,6 +97,7 @@ class OrganizerEventDetail(BaseModel):
     is_for_children: bool
     age_rating_min: int
     requires_registration: bool
+    participants_count: int = 0
     organizer_name: str
     category_ids: list[int]
     categories: list[dict[str, int | str]]

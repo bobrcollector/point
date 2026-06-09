@@ -70,6 +70,7 @@ export function usePublishEvent() {
       void qc.invalidateQueries({ queryKey: ['organizer', 'events'] })
       void qc.invalidateQueries({ queryKey: ['catalog'] })
       void qc.invalidateQueries({ queryKey: ['notifications'] })
+      void qc.invalidateQueries({ queryKey: ['admin'] })
     }
   })
 }

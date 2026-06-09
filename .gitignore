@@ -3,14 +3,20 @@ node_modules/
 **/node_modules/
 dist/
 **/dist/
+dev-dist/
+**/dev-dist/
 .vite/
 **/.vite/
+*.tsbuildinfo
 
 # Env files
 .env
 .env.*
 !.env.example
+
+# Secrets & local dev certificates (mkcert, VAPID, LAN HTTPS)
 *.pem
+**/.lan-cert/
 
 # Uploads
 services/api/uploads/
@@ -18,10 +24,11 @@ services/api/uploads/
 # Python
 .venv/
 venv/
-services/api/uploads/
 __pycache__/
+**/__pycache__/
 *.pyc
 .pytest_cache/
+*.egg-info/
 
 # IDE
 .vscode/

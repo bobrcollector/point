@@ -1,3 +1,12 @@
+/* Push-only service worker (dev + fallback). Без importScripts — надёжнее на Android Chrome. */
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting())
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
 function notificationOptions(payload) {
   const targetUrl = payload.url || '/notifications'
   return {
@@ -16,6 +25,7 @@ async function showPushNotification(title, payload) {
       badge: '/favicon.svg',
     })
   } catch {
+    // Firefox не поддерживает SVG-иконки в уведомлениях — показываем без icon.
     await self.registration.showNotification(title, options)
   }
 }

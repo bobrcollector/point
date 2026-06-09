@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { api } from '../../lib/api'
+import { resolveMediaUrl } from '../../lib/mediaUrl'
 import { useAuthStore } from '../../stores/authStore'
+import type { ApiEventItem } from './types'
 
 const EventInteractionStateSchema = z.object({
   favorite_event_ids: z.array(z.number()),
@@ -28,8 +30,51 @@ export type EventInteractionState = z.infer<typeof EventInteractionStateSchema>
 export type EventReview = z.infer<typeof EventReviewSchema>
 
 export const eventInteractionsQueryKey = ['catalog', 'me', 'interactions'] as const
+export const participatingEventsQueryKey = ['catalog', 'me', 'participating-events'] as const
+
+const ParticipatingEventsResponseSchema = z.object({
+  total: z.number(),
+  items: z.array(
+    z.object({
+      event_id: z.number(),
+      title: z.string(),
+      event_datetime: z.string(),
+      location: z.string(),
+      price: z.number(),
+      cover_image_url: z.string().nullable().optional(),
+      age_rating_min: z.number().int().optional(),
+      categories: z.array(z.object({ id: z.number(), name: z.string() })),
+    }),
+  ),
+})
 export const eventReviewsQueryKey = (eventId: number | null | undefined) =>
   ['catalog', 'event', eventId, 'reviews'] as const
+
+export function participatingItemToCard(item: ApiEventItem) {
+  return {
+    id: String(item.event_id),
+    title: item.title,
+    date: item.event_datetime,
+    place: item.location,
+    price: item.price,
+    coverUrl: resolveMediaUrl(item.cover_image_url ?? null) ?? item.cover_image_url ?? null,
+    category: item.categories?.[0]?.name,
+    ageRatingMin: item.age_rating_min,
+  }
+}
+
+export function useParticipatingEvents() {
+  const token = useAuthStore((s) => s.token)
+  return useQuery({
+    queryKey: participatingEventsQueryKey,
+    queryFn: async (): Promise<ApiEventItem[]> => {
+      const res = await api.get('/api/v1/catalog/me/participating-events')
+      return ParticipatingEventsResponseSchema.parse(res.data).items as ApiEventItem[]
+    },
+    enabled: Boolean(token),
+    staleTime: 15_000,
+  })
+}
 
 export function useEventInteractions() {
   const token = useAuthStore((s) => s.token)
@@ -53,8 +98,10 @@ function useInteractionFlagMutation(path: 'favorite' | 'participation') {
     },
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: eventInteractionsQueryKey })
+      void qc.invalidateQueries({ queryKey: participatingEventsQueryKey })
       void qc.invalidateQueries({ queryKey: ['catalog', 'event', String(vars.eventId), 'detail'] })
       void qc.invalidateQueries({ queryKey: ['catalog', 'events'] })
+      void qc.invalidateQueries({ queryKey: ['organizer', 'event', vars.eventId] })
     },
   })
 }

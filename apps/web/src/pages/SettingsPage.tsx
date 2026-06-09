@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ProfileAvatarUpload } from '../components/ProfileAvatarUpload'
 import { RequireAuth } from '../components/RequireAuth'
@@ -12,7 +12,15 @@ import {
   useUploadAvatar,
 } from '../features/auth/queries'
 import { api } from '../lib/api'
-import { enablePwaPush } from '../lib/push'
+import {
+  clearPushAskedFlag,
+  disablePwaPush,
+  enablePwaPush,
+  getPushCapability,
+  sendTestPush,
+  type PushCapability,
+} from '../lib/push'
+import { initServiceWorker, resetDevServiceWorker } from '../lib/serviceWorker'
 import { useAuthStore } from '../stores/authStore'
 import type { UserMe } from '../features/auth/types'
 
@@ -36,6 +44,12 @@ function SettingsForm({ profile }: { profile: UserMe }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
+  const [pushCap, setPushCap] = useState<PushCapability | null>(null)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  useEffect(() => {
+    void getPushCapability().then(setPushCap)
+  }, [notifyPush])
 
   async function saveProfile(e: FormEvent) {
     e.preventDefault()
@@ -74,10 +88,76 @@ function SettingsForm({ profile }: { profile: UserMe }) {
         locale,
         profile_visibility: visibility,
       })
-      if (notifyPush) await enablePwaPush()
+      if (notifyPush) {
+        clearPushAskedFlag()
+        const result = await enablePwaPush({ forcePermission: true })
+        if (!result.ok) {
+          setMsg(result.message)
+          void getPushCapability().then(setPushCap)
+          return
+        }
+      } else {
+        await disablePwaPush()
+      }
+      void getPushCapability().then(setPushCap)
       setMsg('Настройки приложения сохранены')
     } catch {
       setMsg('Ошибка сохранения')
+    }
+  }
+
+  async function onEnableBrowserPush() {
+    setPushBusy(true)
+    setMsg(null)
+    clearPushAskedFlag()
+    const result = await enablePwaPush({ forcePermission: true })
+    setPushBusy(false)
+    void getPushCapability().then(setPushCap)
+    if (result.ok) {
+      setMsg('Браузерные уведомления включены')
+    } else {
+      setMsg(result.message)
+    }
+  }
+
+  async function onRetryServiceWorker() {
+    setPushBusy(true)
+    if (import.meta.env.DEV) {
+      await resetDevServiceWorker()
+    } else {
+      await initServiceWorker()
+    }
+    setPushBusy(false)
+    const cap = await getPushCapability()
+    setPushCap(cap)
+    if (!cap.supported && cap.vapidEnabled) {
+      setMsg('Обновите страницу (потяните вниз или закройте вкладку) — Chrome активирует service worker.')
+      window.setTimeout(() => window.location.reload(), 1500)
+    }
+  }
+
+  const swNotReady = Boolean(
+    notifyPush && pushCap?.vapidEnabled && !pushCap.supported && pushCap.hint?.includes('Service worker'),
+  )
+
+  async function onTestPush() {
+    setPushBusy(true)
+    setMsg(null)
+    try {
+      const result = await sendTestPush()
+      if (result.ok) {
+        setMsg('Тестовое уведомление отправлено — проверьте центр уведомлений Windows.')
+      } else {
+        setMsg([result.message, result.hint].filter(Boolean).join(' '))
+        if (result.hint?.includes('включите push')) {
+          clearPushAskedFlag()
+          void getPushCapability().then(setPushCap)
+        }
+      }
+    } catch {
+      setMsg('Не удалось отправить тест. Проверьте VAPID-ключи и подписку.')
+    } finally {
+      setPushBusy(false)
     }
   }
 
@@ -200,8 +280,24 @@ function SettingsForm({ profile }: { profile: UserMe }) {
           </label>
           <label className="accountCheck">
             <input type="checkbox" checked={notifyPush} onChange={(e) => setNotifyPush(e.target.checked)} />
-            Push-уведомления
+            Push-уведомления (Windows, Android, iOS)
           </label>
+          {notifyPush && pushCap?.hint ? <p className="pageSub pushHint">{pushCap.hint}</p> : null}
+          {swNotReady ? (
+            <button type="button" className="homeGhostBtn" disabled={pushBusy} onClick={onRetryServiceWorker}>
+              Подключить service worker
+            </button>
+          ) : null}
+          {notifyPush && pushCap?.supported && pushCap.permission !== 'granted' ? (
+            <button type="button" className="homeGhostBtn" disabled={pushBusy} onClick={onEnableBrowserPush}>
+              Разрешить в браузере
+            </button>
+          ) : null}
+          {notifyPush && pushCap?.subscribed ? (
+            <button type="button" className="homeGhostBtn" disabled={pushBusy} onClick={onTestPush}>
+              Отправить тестовое уведомление
+            </button>
+          ) : null}
           <label className="label">Язык интерфейса</label>
           <select className="select authInput" value={locale} onChange={(e) => setLocale(e.target.value)}>
             <option value="ru">Русский</option>

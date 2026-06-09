@@ -18,6 +18,7 @@ dependencies = [
   "email-validator>=2.0",
   "Pillow>=10.0",
   "pywebpush>=2.0",
+  "py-vapid>=1.9",
 ]
 
 [tool.uvicorn]

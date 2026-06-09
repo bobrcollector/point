@@ -11,6 +11,9 @@ const LABELS: Record<string, string> = {
   '/my/organized': '← Организую',
   '/my/attending': '← Участвую',
   '/create': '← Создать событие',
+  '/account': '← Профиль',
+  '/settings': '← Настройки',
+  '/admin/pending': '← Модерация',
 }
 
 export function getEventDetailBack(state: unknown): EventDetailBack {

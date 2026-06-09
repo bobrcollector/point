@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CITIES, type City } from '../lib/cities'
 import { searchCitiesByGeocoder } from '../lib/yandexGeocoder'
 import { presetCityOptions, useCityStore } from '../stores/cityStore'
@@ -43,6 +43,26 @@ export function CitySelect({ variant, className, showLabel }: Props) {
     cityByValueRef.current.set(city.id, city)
   }, [city])
 
+  const handleSearchQuery = useCallback(async (query: string) => {
+    setSearchQuery(query)
+    const q = query.trim()
+    if (q.length < 2) {
+      setRemoteOptions([])
+      setSearchLoading(false)
+      return
+    }
+    setSearchLoading(true)
+    try {
+      const cities = await searchCitiesByGeocoder(q)
+      for (const c of cities) cityByValueRef.current.set(c.id, c)
+      setRemoteOptions(cities.map((c) => ({ value: c.id, label: c.name })))
+    } catch {
+      setRemoteOptions([])
+    } finally {
+      setSearchLoading(false)
+    }
+  }, [])
+
   const options = useMemo(() => {
     const seen = new Set<string>()
     const out: PointDropdownOption<string>[] = []
@@ -80,25 +100,7 @@ export function CitySelect({ variant, className, showLabel }: Props) {
       labelOverride={city.name}
       searchable
       searchLocally={false}
-      onSearchQuery={async (query) => {
-        setSearchQuery(query)
-        const q = query.trim()
-        if (q.length < 2) {
-          setRemoteOptions([])
-          setSearchLoading(false)
-          return
-        }
-        setSearchLoading(true)
-        try {
-          const cities = await searchCitiesByGeocoder(q)
-          for (const c of cities) cityByValueRef.current.set(c.id, c)
-          setRemoteOptions(cities.map((c) => ({ value: c.id, label: c.name })))
-        } catch {
-          setRemoteOptions([])
-        } finally {
-          setSearchLoading(false)
-        }
-      }}
+      onSearchQuery={handleSearchQuery}
       searchLoading={searchLoading}
       searchPlaceholder="Поиск города"
       triggerPrefix={

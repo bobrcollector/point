@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { api } from '../../lib/api'
 import { resolveMediaUrl } from '../../lib/mediaUrl'
 import { useAuthStore } from '../../stores/authStore'
-import { enablePwaPush } from '../../lib/push'
+import { syncPushSubscription } from '../../lib/push'
 import type { UserMe } from './types'
 
 const CategoryRefSchema = z.object({ id: z.number(), name: z.string() })
@@ -62,7 +62,7 @@ export function useLogin() {
       useAuthStore.setState({ token: access_token })
       const me = await fetchMe()
       setSession(access_token, me)
-      if (me.notify_push) void enablePwaPush()
+      if (me.notify_push) void syncPushSubscription()
       return me
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auth'] }),
@@ -79,7 +79,7 @@ export function useRegister() {
       useAuthStore.setState({ token: access_token })
       const me = await fetchMe()
       setSession(access_token, me)
-      if (me.notify_push) void enablePwaPush()
+      if (me.notify_push) void syncPushSubscription()
       return me
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auth'] }),
@@ -154,7 +154,7 @@ export async function hydrateSessionFromToken() {
   try {
     const me = await fetchMe()
     useAuthStore.getState().setUser(me)
-    if (me.notify_push) void enablePwaPush()
+    if (me.notify_push) void syncPushSubscription()
     return me
   } catch {
     useAuthStore.getState().logout()

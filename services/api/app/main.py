@@ -16,12 +16,18 @@ from app.api.v1.notifications.router import router as notifications_router
 from app.api.v1.push.router import router as push_router
 from app.api.v1.users.router import router as users_router
 from app.api.v1.organizer.router import router as organizer_router
+from app.api.media_placeholders import router as media_placeholders_router
 from app.core.config import settings
-from app.db.session import engine, get_db
+from app.db.session import AsyncSessionLocal, engine, get_db
+from app.seed.bootstrap import repair_event_media_urls
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    async with AsyncSessionLocal() as session:
+        updated = await repair_event_media_urls(session)
+        if updated:
+            await session.commit()
     yield
     await engine.dispose()
 
@@ -50,6 +56,7 @@ def create_app() -> FastAPI:
 
     upload_path = Path(settings.upload_dir)
     upload_path.mkdir(parents=True, exist_ok=True)
+    app.include_router(media_placeholders_router, prefix="/api/v1/placeholders", tags=["media"])
     app.mount("/uploads", StaticFiles(directory=str(upload_path)), name="uploads")
     app.mount("/api/v1/media", StaticFiles(directory=str(upload_path)), name="media")
 

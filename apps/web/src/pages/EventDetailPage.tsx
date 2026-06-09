@@ -71,16 +71,23 @@ export function EventDetailPage() {
   const { eventId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const detailState = location.state as { organizerPreview?: boolean; archivedView?: boolean; eventStatus?: string } | null
+  const detailState = location.state as {
+    organizerPreview?: boolean
+    adminPreview?: boolean
+    archivedView?: boolean
+    eventStatus?: string
+  } | null
   const isAuthed = Boolean(useAuthStore((s) => s.token))
   const authUser = useAuthStore((s) => s.user)
   const back = getEventDetailBack(location.state)
   const organizerPreview = Boolean(detailState?.organizerPreview)
-  const q = useResolvedEventDetail(eventId, organizerPreview)
+  const adminPreview = Boolean(detailState?.adminPreview)
+  const previewMode = organizerPreview || adminPreview
+  const q = useResolvedEventDetail(eventId, organizerPreview, adminPreview)
   const d = q.data
   const numericEventId = eventId && /^\d+$/.test(eventId) ? Number(eventId) : null
   const interactionsQuery = useEventInteractions()
-  const reviewsQuery = useEventReviews(organizerPreview ? null : numericEventId)
+  const reviewsQuery = useEventReviews(previewMode ? null : numericEventId)
   const setFavorite = useSetEventFavorite()
   const setParticipation = useSetEventParticipation()
   const createReview = useCreateEventReview(numericEventId)
@@ -365,9 +372,14 @@ export function EventDetailPage() {
             </div>
           </div>
         </div>
-        <EventDetailGallery images={galleryImages} eventKey={eventId} />
+        <EventDetailGallery images={galleryImages} eventKey={eventId} interactive={!adminPreview} />
       </div>
 
+      {adminPreview ? (
+        <p className="eventDetailMuted eventDetailAdminPreviewNote">Просмотр на модерации — только чтение.</p>
+      ) : null}
+
+      {!adminPreview ? (
       <section className="eventDetailActionsBar" aria-label="Действия">
         {isOrganizer ? (
           <>
@@ -487,6 +499,7 @@ export function EventDetailPage() {
         )}
         {reportDone ? <span className="eventDetailMuted eventDetailActionsHint">Жалоба отправлена</span> : null}
       </section>
+      ) : null}
 
       <div className="eventDetailBody eventDetailInfoGrid">
         <section className="eventDetailPanel eventDetailPanelHighlight eventDetailGridWhen" aria-labelledby="event-when">
@@ -546,7 +559,7 @@ export function EventDetailPage() {
             {d.organizer_name}
           </p>
           <p className="eventDetailMuted">Участников: {d.participants_count}</p>
-          {!isOrganizer ? (
+          {!isOrganizer && !adminPreview ? (
             <button
               type="button"
               className="eventDetailBtn"
@@ -560,6 +573,7 @@ export function EventDetailPage() {
           ) : null}
         </section>
 
+        {!adminPreview ? (
         <section className="eventDetailPanel eventDetailPanelCompact eventDetailGridShare" aria-labelledby="event-share">
           <h2 id="event-share" className="eventDetailPanelTitle">
             Поделиться
@@ -613,13 +627,14 @@ export function EventDetailPage() {
             </a>
           </div>
         </section>
+        ) : null}
 
         <section className="eventDetailPanel eventDetailGridReviews" aria-labelledby="event-reviews">
           <div className="eventDetailReviewsHead">
             <h2 id="event-reviews" className="eventDetailPanelTitle">
               Отзывы
             </h2>
-            {reviews.length > 0 ? (
+            {!adminPreview && reviews.length > 0 ? (
               <div className="eventDetailReviewsSort">
                 <PointDropdown
                   variant="light"
@@ -633,7 +648,9 @@ export function EventDetailPage() {
             ) : null}
           </div>
 
-          {reviews.length > 0 ? (
+          {adminPreview ? (
+            <p className="eventDetailMuted">Отзывы появятся после публикации события.</p>
+          ) : reviews.length > 0 ? (
             <div className="eventDetailReviewsList" key={reviewSort}>
               {sortedReviews.map((r) => (
                   <div key={r.review_id} className="eventDetailReviewItem">
@@ -667,13 +684,13 @@ export function EventDetailPage() {
             <p className="eventDetailMuted">Пока нет отзывов.</p>
           )}
 
-          {myReview ? (
+          {!adminPreview && myReview ? (
             <p className="eventDetailMuted" style={{ marginTop: 10 }}>
               Вы уже оставили отзыв на это мероприятие.
             </p>
           ) : null}
 
-          {canReview ? (
+          {!adminPreview && canReview ? (
             <>
               {!reviewFormOpen ? (
                 <button
@@ -729,12 +746,12 @@ export function EventDetailPage() {
               </form>
               )}
             </>
-          ) : isOrganizer ? (
+          ) : !adminPreview && isOrganizer ? (
             <p className="eventDetailMuted" style={{ marginTop: 10 }}>
               Как организатор вы не можете оставить отзыв на своё мероприятие. При необходимости пожалуйтесь на
               некорректные отзывы участников — кнопка у каждого отзыва.
             </p>
-          ) : !myReview ? (
+          ) : !adminPreview && !myReview ? (
             <p className="eventDetailMuted" style={{ marginTop: 10 }}>
               {!isAuthed
                 ? 'Войдите, чтобы отметить посещение и оставить отзыв.'
@@ -748,6 +765,7 @@ export function EventDetailPage() {
         </section>
       </div>
 
+      {!adminPreview ? (
       <OrganizerChatPanel
         open={chatOpen}
         onClose={() => setChatOpen(false)}
@@ -756,22 +774,23 @@ export function EventDetailPage() {
         displayName={chatDisplayName}
         asOrganizer={chatAsOrganizer}
       />
+      ) : null}
 
-      {reviewReportId ? (
+      {!adminPreview && reviewReportId ? (
         <div
           className="eventDetailModalBackdrop"
           role="presentation"
           onMouseDown={() => setReviewReportId(null)}
         >
           <div
-            className="eventDetailModal"
+            className="eventDetailModal eventReportModal"
             role="dialog"
             aria-modal
             aria-labelledby="review-report-title"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="eventDetailModalHead">
-              <h2 id="review-report-title" className="eventDetailModalTitle">
+            <div className="eventReportModalHead">
+              <h2 id="review-report-title" className="eventReportModalTitle">
                 Пожаловаться на отзыв
               </h2>
               <button
@@ -783,8 +802,8 @@ export function EventDetailPage() {
                 ×
               </button>
             </div>
-            <form onSubmit={onSubmitReviewReport}>
-              <div className="searchGroup eventDetailDropdownGroup" style={{ marginBottom: 10 }}>
+            <form className="eventReportModalForm" onSubmit={onSubmitReviewReport}>
+              <div className="eventReportModalField eventDetailDropdownGroup">
                 <span className="label">Причина</span>
                 <PointDropdown
                   variant="light"
@@ -794,19 +813,18 @@ export function EventDetailPage() {
                   onChange={setReviewReportReason}
                 />
               </div>
-              <div className="searchGroup" style={{ marginBottom: 12 }}>
+              <div className="eventReportModalField">
                 <label className="label" htmlFor="review-report-details">
                   Комментарий
                 </label>
                 <textarea
                   id="review-report-details"
-                  className="input"
-                  style={{ minHeight: 110 }}
+                  className="input eventReportModalTextarea"
                   value={reviewReportDetails}
                   onChange={(e) => setReviewReportDetails(e.target.value)}
                 />
               </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <div className="eventReportModalActions">
                 <button type="button" className="eventDetailBtn" onClick={() => setReviewReportId(null)}>
                   Отмена
                 </button>
@@ -819,19 +837,25 @@ export function EventDetailPage() {
         </div>
       ) : null}
 
-      {reportOpen ? (
+      {!adminPreview && reportOpen ? (
         <div className="eventDetailModalBackdrop" role="presentation" onMouseDown={() => setReportOpen(false)}>
-          <div className="eventDetailModal" role="dialog" aria-modal aria-labelledby="report-title" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="eventDetailModalHead">
-              <h2 id="report-title" className="eventDetailModalTitle">
+          <div
+            className="eventDetailModal eventReportModal"
+            role="dialog"
+            aria-modal
+            aria-labelledby="report-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="eventReportModalHead">
+              <h2 id="report-title" className="eventReportModalTitle">
                 Пожаловаться на событие
               </h2>
               <button type="button" className="mobileSheetClose" onClick={() => setReportOpen(false)} aria-label="Закрыть">
                 ×
               </button>
             </div>
-            <form onSubmit={onSubmitReport}>
-              <div className="searchGroup eventDetailDropdownGroup" style={{ marginBottom: 10 }}>
+            <form className="eventReportModalForm" onSubmit={onSubmitReport}>
+              <div className="eventReportModalField eventDetailDropdownGroup">
                 <span className="label">Причина</span>
                 <PointDropdown
                   variant="light"
@@ -841,13 +865,18 @@ export function EventDetailPage() {
                   onChange={setReportReason}
                 />
               </div>
-              <div className="searchGroup" style={{ marginBottom: 12 }}>
+              <div className="eventReportModalField">
                 <label className="label" htmlFor="report-details">
                   Комментарий
                 </label>
-                <textarea id="report-details" className="input" style={{ minHeight: 110 }} value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} />
+                <textarea
+                  id="report-details"
+                  className="input eventReportModalTextarea"
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                />
               </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <div className="eventReportModalActions">
                 <button type="button" className="eventDetailBtn" onClick={() => setReportOpen(false)}>
                   Отмена
                 </button>

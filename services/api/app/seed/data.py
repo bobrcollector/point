@@ -1,5 +1,16 @@
 """Начальные категории и события (демо-данные для пустой БД)."""
 
+# Регистрации по дням (от 6 дней назад до сегодня) для графика в админке.
+CHART_USERS_PER_DAY: list[int] = [2, 4, 1, 5, 3, 6, 4]
+
+# Жалобы по дням (от 6 дней назад до сегодня).
+CHART_COMPLAINTS_PER_DAY: list[int] = [0, 1, 0, 2, 1, 2, 1]
+
+CHART_EVENT_ID_MIN = 101
+CHART_EVENT_ID_MAX = 142
+
+DEMO_USER_EMAIL_DOMAIN = "point-demo.ru"
+
 CATEGORY_SEEDS: list[dict[str, int | str]] = [
     {"id": 1, "name": "Концерты"},
     {"id": 2, "name": "Театр"},

@@ -22,6 +22,7 @@ class RoleUpdate(BaseModel):
 class ModerateEventPayload(BaseModel):
     decision: str
     reason: str | None = None
+    block_organizer: bool = False
 
     @field_validator("decision")
     @classmethod
@@ -56,6 +57,8 @@ class ComplaintAdminOut(BaseModel):
     reason: str
     status: str
     created_at: datetime
+    user_name: str
+    event_title: str
 
     model_config = {"from_attributes": True}
 
@@ -87,3 +90,9 @@ class DashboardMetrics(BaseModel):
     active_events_today: int
     active_events_today_or_future: int
     new_complaints: int
+    pending_events: int
+    banned_users: int
+    upcoming_events: int
+    total_participations: int
+    total_reviews: int
+    avg_event_rating: float | None = None

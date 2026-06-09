@@ -1,29 +1,32 @@
 import { useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { formatApiError } from '../lib/apiError'
 import { EventListCard, type EventListCardData } from '../components/EventListCard'
-import { IconPencil, IconPlusSquare, IconTrash } from '../components/NavGlyphs'
-import { useEventCards } from '../features/catalog/useEventCards'
-import { useEventInteractions } from '../features/catalog/interactions'
+import { IconPencil, IconTrash } from '../components/NavGlyphs'
+import {
+  participatingItemToCard,
+  useParticipatingEvents,
+} from '../features/catalog/interactions'
 import { useDeleteEvent, useFinishEvent, useMyOrganizerEvents, usePublishEvent } from '../features/organizer/queries'
 import type { OrganizerEventListItem } from '../features/organizer/types'
+import {
+  ORGANIZER_FILTER_OPTIONS,
+  filterOrganizerEvents,
+  readStoredFilter,
+  writeStoredFilter,
+  type OrganizerEventsFilter,
+} from '../lib/listFilter'
 
 type MyEventsRouteKey = 'organized' | 'attending'
-type MyEventsPeriod = 'active' | 'drafts' | 'moderation' | 'archive'
+type MyEventsTimeScope = 'upcoming' | 'past'
 
-const ORGANIZED_PERIODS: { key: MyEventsPeriod; label: string }[] = [
-  { key: 'active', label: 'Активные' },
-  { key: 'drafts', label: 'Черновики' },
-  { key: 'moderation', label: 'На модерации' },
-  { key: 'archive', label: 'Архив' },
+const TIME_SCOPE_OPTIONS: { key: MyEventsTimeScope; label: string }[] = [
+  { key: 'upcoming', label: 'Предстоящие' },
+  { key: 'past', label: 'Прошедшие' },
 ]
 
-const ATTENDING_PERIODS: { key: MyEventsPeriod; label: string }[] = [
-  { key: 'active', label: 'Активные' },
-  { key: 'archive', label: 'Архив' },
-]
-
-function statusLabel(status: string) {
+function statusLabel(status: string, isHidden?: boolean) {
+  if (status === 'approved' && isHidden) return 'Скрыто из ленты'
   if (status === 'approved') return 'В ленте'
   if (status === 'pending') return 'На модерации'
   if (status === 'rejected') return 'Отклонено'
@@ -34,6 +37,11 @@ function statusLabel(status: string) {
 
 function getRouteKey(pathname: string): MyEventsRouteKey {
   return pathname.includes('/my/attending') ? 'attending' : 'organized'
+}
+
+function normalizeTimeScope(raw?: string): MyEventsTimeScope {
+  if (raw === 'past' || raw === 'archive') return 'past'
+  return 'upcoming'
 }
 
 function isPast(date: string) {
@@ -52,29 +60,65 @@ function splitCardsByTime(cards: EventListCardData[]) {
   return { upcoming, past }
 }
 
-function MyEventsTimeTabs({
-  period,
-  onPeriodChange,
-  options,
+const ORGANIZER_FILTER_STORAGE_KEY = 'point:organized-events-filter'
+
+function MyEventsFilterSelect({
+  value,
+  onChange,
+  id,
+  label,
 }: {
-  period: MyEventsPeriod
-  onPeriodChange: (p: MyEventsPeriod) => void
-  options: { key: MyEventsPeriod; label: string }[]
+  value: OrganizerEventsFilter
+  onChange: (next: OrganizerEventsFilter) => void
+  id: string
+  label: string
 }) {
   return (
-    <nav className="myEventsSubnav" aria-label="Период событий">
-      {options.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          className={period === item.key ? 'myEventsSubnavLink active' : 'myEventsSubnavLink'}
-          aria-pressed={period === item.key}
-          onClick={() => onPeriodChange(item.key)}
-        >
-          {item.label}
-        </button>
-      ))}
-    </nav>
+    <div className="listFilterBar">
+      <label className="listFilterLabel" htmlFor={id}>
+        {label}
+      </label>
+      <select
+        id={id}
+        className="select listFilterSelect"
+        value={value}
+        onChange={(e) => onChange(e.target.value as OrganizerEventsFilter)}
+      >
+        {ORGANIZER_FILTER_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+function MyEventsTimeSwitch({
+  scope,
+  onScopeChange,
+  className,
+}: {
+  scope: MyEventsTimeScope
+  onScopeChange: (scope: MyEventsTimeScope) => void
+  className?: string
+}) {
+  return (
+    <div className={['myEventsTimeSegWrap', className].filter(Boolean).join(' ')}>
+      <nav className="segmented myEventsTimeSeg" aria-label="Период событий">
+        {TIME_SCOPE_OPTIONS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={scope === item.key ? 'segBtn active' : 'segBtn'}
+            aria-pressed={scope === item.key}
+            onClick={() => onScopeChange(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+    </div>
   )
 }
 
@@ -95,11 +139,11 @@ function stopCardNav(e: MouseEvent | KeyboardEvent) {
 
 function OrganizerCard({
   event,
-  period,
+  timeScope,
   onDeleted,
 }: {
   event: OrganizerEventListItem
-  period: MyEventsPeriod
+  timeScope: MyEventsTimeScope
   onDeleted: () => void
 }) {
   const navigate = useNavigate()
@@ -110,24 +154,29 @@ function OrganizerCard({
   const [finishError, setFinishError] = useState<string | null>(null)
   const [renderedAt] = useState(() => Date.now())
   const dt = new Date(event.event_datetime)
-  const isPast = dt.getTime() < renderedAt
-  const isArchived = period === 'archive' || event.status === 'archived' || event.status === 'cancelled' || isPast
-  const canFinish = period === 'active' && event.status === 'approved' && !isArchived
+  const isPastByDate = dt.getTime() < renderedAt
+  const isArchived =
+    timeScope === 'past' || event.status === 'archived' || event.status === 'cancelled' || isPastByDate
+  const isRejected = event.status === 'rejected'
+  const isHiddenFromFeed = event.status === 'approved' && Boolean(event.is_hidden)
+  const canFinish = timeScope === 'upcoming' && event.status === 'approved' && !isArchived && !isHiddenFromFeed
+  const rejectionReason = event.moderation_reason?.trim() || 'Причина не указана.'
+  const hiddenReason = event.moderation_reason?.trim() || 'Событие удалено из каталога по жалобе.'
 
   const openEvent = () => {
     if (event.status === 'draft') {
       navigate(`/events/${event.event_id}/edit`)
       return
     }
-    if (event.status === 'pending' || event.status === 'rejected') {
+    if (event.status === 'pending' || event.status === 'rejected' || isHiddenFromFeed) {
       navigate(`/events/${event.event_id}/edit`)
       return
     }
     navigate(`/events/${event.event_id}`, {
       state: {
         from: '/my/organized',
-        label: isArchived ? '← Архив' : '← Организую',
-        backState: { period: isArchived ? 'archive' : period },
+        label: isArchived ? '← Прошедшие' : '← Организую',
+        backState: { timeScope: isArchived ? 'past' : timeScope },
         organizerPreview: event.status === 'archived' || event.status === 'cancelled',
         archivedView: isArchived,
         eventStatus: event.status,
@@ -151,7 +200,7 @@ function OrganizerCard({
         navigate('/my/organized', {
           state: {
             notice: 'Событие успешно отправлено на модерацию',
-            period: 'moderation',
+            timeScope: 'upcoming',
           },
         })
       },
@@ -175,7 +224,7 @@ function OrganizerCard({
         navigate('/my/organized', {
           state: {
             notice: 'Событие завершено и перемещено в архив',
-            period: 'archive',
+            timeScope: 'past',
           },
         })
       },
@@ -193,12 +242,26 @@ function OrganizerCard({
 
   return (
     <article
-      className="card cardInner eventListCard organizerEventCard"
+      className={[
+        'card',
+        'cardInner',
+        'eventListCard',
+        'organizerEventCard',
+        isRejected || isHiddenFromFeed ? 'organizerEventCardRejected' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       role="button"
       tabIndex={0}
       onClick={openEvent}
       onKeyDown={onCardKeyDown}
-      aria-label={`Открыть: ${event.title}`}
+      aria-label={
+        isRejected
+          ? `Отклонено: ${event.title}`
+          : isHiddenFromFeed
+            ? `Скрыто из ленты: ${event.title}`
+            : `Открыть: ${event.title}`
+      }
     >
       <div
         className="cardCover"
@@ -207,25 +270,41 @@ function OrganizerCard({
           position: 'relative',
         }}
       >
-        <div className="cardCoverOverlay" />
+        <div className={`cardCoverOverlay${isRejected ? ' cardCoverOverlayRejected' : ''}`} />
         <div className="cardTop">
           <div className="cardTopBadges">
-            <div className="badge">{event.categories?.[0]?.name ?? 'Событие'}</div>
-            <div className="badge">{statusLabel(event.status)}</div>
+            {!isRejected ? <div className="badge">{event.categories?.[0]?.name ?? 'Событие'}</div> : null}
+            <div className={`badge${isRejected || isHiddenFromFeed ? ' organizerEventCardRejectedBadge' : ''}`}>
+              {statusLabel(event.status, event.is_hidden)}
+            </div>
           </div>
         </div>
       </div>
       <div className="cardBody">
         <div className="cardTitle">{event.title}</div>
-        <div className="cardMeta">
-          {dt.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
-          {isPast ? ' · прошло' : ' · предстоит'}
-          <br />
-          {event.location}
-        </div>
-        <div className="cardPrice">
-          {event.price === 0 ? 'Бесплатно' : `от ${event.price} ₽`} · билетов: {event.ticket_types_count}
-        </div>
+        {isRejected ? (
+          <div className="organizerEventCardRejectedBody">
+            <p className="organizerEventCardRejectedTitle">Событие отклонено</p>
+            <p className="organizerEventCardRejectedReason">{rejectionReason}</p>
+          </div>
+        ) : isHiddenFromFeed ? (
+          <div className="organizerEventCardRejectedBody">
+            <p className="organizerEventCardRejectedTitle">Удалено из ленты</p>
+            <p className="organizerEventCardRejectedReason">{hiddenReason}</p>
+          </div>
+        ) : (
+          <>
+            <div className="cardMeta">
+              {dt.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
+              {isPastByDate ? ' · прошло' : ' · предстоит'}
+              <br />
+              {event.location}
+            </div>
+            <div className="cardPrice">
+              {event.price === 0 ? 'Бесплатно' : `от ${event.price} ₽`} · билетов: {event.ticket_types_count}
+            </div>
+          </>
+        )}
         <div className="organizerEventCardActions" onClick={stopCardNav} onKeyDown={stopCardNav}>
           {event.status === 'draft' ? (
             <button
@@ -279,90 +358,99 @@ function OrganizerCard({
 export function MyEventsPage() {
   const location = useLocation()
   const navigate = useNavigate()
+  if (location.pathname === '/my' || location.pathname === '/my/') {
+    return <Navigate to="/my/attending" replace />
+  }
+
   const routeKey = getRouteKey(location.pathname)
-  const routeState = location.state as { notice?: string; period?: MyEventsPeriod } | null
+  const routeState = location.state as {
+    notice?: string
+    timeScope?: MyEventsTimeScope
+    period?: string
+  } | null
   const organizerQuery = useMyOrganizerEvents()
-  const interactionsQuery = useEventInteractions()
+  const participatingQuery = useParticipatingEvents()
   const [now] = useState(() => Date.now())
-  const [periods, setPeriods] = useState<Record<MyEventsRouteKey, MyEventsPeriod>>({
-    organized: 'active',
-    attending: 'active',
+  const [timeScopes, setTimeScopes] = useState<Record<MyEventsRouteKey, MyEventsTimeScope>>({
+    organized: 'upcoming',
+    attending: 'upcoming',
   })
-  const statePeriod = routeKey === 'organized' ? routeState?.period : undefined
-  const period = statePeriod ?? periods[routeKey]
+  const [organizerFilter, setOrganizerFilter] = useState<OrganizerEventsFilter>(() =>
+    readStoredFilter(
+      ORGANIZER_FILTER_STORAGE_KEY,
+      ORGANIZER_FILTER_OPTIONS.map((o) => o.value),
+      'all',
+    ),
+  )
+  const stateTimeScope =
+    routeKey === 'organized'
+      ? routeState?.timeScope ?? (routeState?.period ? normalizeTimeScope(routeState.period) : undefined)
+      : undefined
+  const timeScope = stateTimeScope ?? timeScopes[routeKey]
   const clearRouteState = () => {
-    if (routeState?.period && routeKey === 'organized') {
-      setPeriods((current) => ({ ...current, organized: routeState.period as MyEventsPeriod }))
+    if (routeState && routeKey === 'organized') {
+      const nextScope = routeState.timeScope ?? (routeState.period ? normalizeTimeScope(routeState.period) : timeScope)
+      setTimeScopes((current) => ({ ...current, organized: nextScope }))
     }
     navigate(location.pathname, { replace: true })
   }
-  const setPeriod = (next: MyEventsPeriod) => {
+  const setTimeScope = (next: MyEventsTimeScope) => {
     if (routeState) navigate(location.pathname, { replace: true })
-    setPeriods((current) => ({ ...current, [routeKey]: next }))
+    setTimeScopes((current) => ({ ...current, [routeKey]: next }))
   }
-  const participatingIds = useMemo(
-    () => (interactionsQuery.data?.participating_event_ids ?? []).map(String),
-    [interactionsQuery.data?.participating_event_ids]
-  )
-  const participatingCardsQuery = useEventCards(participatingIds)
-  const participatingSplit = splitCardsByTime(participatingCardsQuery.cards)
+  const participatingSplit = useMemo(() => {
+    const cards = (participatingQuery.data ?? []).map(participatingItemToCard)
+    return splitCardsByTime(cards)
+  }, [participatingQuery.data])
 
-  const { drafts, moderation, upcoming, past } = useMemo(() => {
+  const { organizedUpcoming, organizedPast } = useMemo(() => {
     const items = organizerQuery.data ?? []
-    const dr: OrganizerEventListItem[] = []
-    const mod: OrganizerEventListItem[] = []
-    const up: OrganizerEventListItem[] = []
-    const pa: OrganizerEventListItem[] = []
+    const upcoming: OrganizerEventListItem[] = []
+    const past: OrganizerEventListItem[] = []
     for (const e of items) {
-      if (e.status === 'draft') {
-        dr.push(e)
+      if (e.status === 'archived' || e.status === 'cancelled' || new Date(e.event_datetime).getTime() < now) {
+        past.push(e)
         continue
       }
-      if (e.status === 'pending' || e.status === 'rejected') {
-        mod.push(e)
-        continue
-      }
-      if (e.status === 'archived' || e.status === 'cancelled' || new Date(e.event_datetime).getTime() < now) pa.push(e)
-      else up.push(e)
+      upcoming.push(e)
     }
-    return { drafts: dr, moderation: mod, upcoming: up, past: pa }
+    return { organizedUpcoming: upcoming, organizedPast: past }
   }, [now, organizerQuery.data])
 
-  const shownOrganizerEvents =
-    period === 'drafts' ? drafts : period === 'moderation' ? moderation : period === 'archive' ? past : upcoming
-  const shownParticipatingCards = period === 'active' ? participatingSplit.upcoming : participatingSplit.past
-  const pageTitle = routeKey === 'organized' ? 'Организую' : 'Участвую'
-  const periodOptions = routeKey === 'organized' ? ORGANIZED_PERIODS : ATTENDING_PERIODS
-  const organizerSectionTitle =
-    period === 'drafts'
-      ? 'Черновики'
-      : period === 'moderation'
-        ? 'События на модерации'
-        : period === 'archive'
-          ? 'Архив'
-          : 'Активные события'
+  const shownOrganizerEvents = useMemo(() => {
+    const base = timeScope === 'past' ? organizedPast : organizedUpcoming
+    return filterOrganizerEvents(base, organizerFilter, timeScope)
+  }, [organizedPast, organizedUpcoming, organizerFilter, timeScope])
+  const shownParticipatingCards =
+    timeScope === 'past' ? participatingSplit.past : participatingSplit.upcoming
+
   const organizerEmpty =
-    period === 'drafts'
-      ? 'Нет черновиков.'
-      : period === 'moderation'
-        ? 'Нет событий на модерации.'
-        : period === 'archive'
-          ? 'В архиве пока нет завершённых организованных событий.'
-          : 'Нет предстоящих событий, которые вы организуете.'
+    timeScope === 'past'
+      ? 'Нет прошедших организованных мероприятий.'
+      : 'Нет предстоящих мероприятий, которые вы организуете.'
+  const attendingEmpty =
+    timeScope === 'past'
+      ? 'Нет прошедших мероприятий с отметкой «Пойду».'
+      : 'Нет предстоящих мероприятий с отметкой «Пойду».'
 
   return (
     <div className="page myEventsPage">
       <header className="myEventsHeader">
-        <h1 className="myEventsTitle">{pageTitle}</h1>
+        <h1 className="myEventsTitle">Мои мероприятия</h1>
       </header>
 
+      <MyEventsTimeSwitch
+        scope={timeScope}
+        onScopeChange={setTimeScope}
+        className="myEventsTimeSegWrapTop"
+      />
+
       <div className="myEventsToolbar myEventsToolbarCompact">
-        <MyEventsTimeTabs period={period} onPeriodChange={setPeriod} options={periodOptions} />
-        {routeKey === 'organized' ? (
-          <Link className="myEventsCreateFab" to="/create" title="Создать событие" aria-label="Создать событие">
-            <IconPlusSquare />
-          </Link>
-        ) : null}
+        <MyEventsTimeSwitch
+          scope={timeScope}
+          onScopeChange={setTimeScope}
+          className="myEventsTimeSegWrapToolbar"
+        />
       </div>
 
       {routeState?.notice ? (
@@ -391,48 +479,55 @@ export function MyEventsPage() {
             </div>
           ) : null}
 
+          <MyEventsFilterSelect
+            id="organized-events-filter"
+            label="Фильтр"
+            value={organizerFilter}
+            onChange={(next) => {
+              setOrganizerFilter(next)
+              writeStoredFilter(ORGANIZER_FILTER_STORAGE_KEY, next)
+            }}
+          />
+
           <section className="myEventsSection">
-            <h2 className="myEventsSectionTitle">{organizerSectionTitle}</h2>
             {organizerQuery.isLoading ? <p className="pageSub">Загрузка…</p> : null}
             {shownOrganizerEvents.length ? (
               <div className="myEventsGrid">
                 {shownOrganizerEvents.map((e) => (
-                  <OrganizerCard key={e.event_id} event={e} period={period} onDeleted={() => organizerQuery.refetch()} />
+                  <OrganizerCard
+                    key={e.event_id}
+                    event={e}
+                    timeScope={timeScope}
+                    onDeleted={() => organizerQuery.refetch()}
+                  />
                 ))}
               </div>
             ) : null}
             {!organizerQuery.isLoading && !shownOrganizerEvents.length ? (
-              <p className="myEventsEmpty">
-                {period === 'active' ? (
-                  <>
-                    {organizerEmpty} <Link to="/create">Создать</Link>
-                  </>
-                ) : (
-                  organizerEmpty
-                )}
-              </p>
+              <p className="myEventsEmpty">{organizerEmpty}</p>
             ) : null}
           </section>
         </>
       ) : (
         <section className="myEventsSection">
-          <h2 className="myEventsSectionTitle">{period === 'active' ? 'Активные события' : 'Архив'}</h2>
-          {interactionsQuery.isLoading || participatingCardsQuery.isLoading ? <p className="pageSub">Загрузка…</p> : null}
+          {participatingQuery.isError ? (
+            <div className="eventDetailPanel" style={{ marginBottom: 16 }}>
+              <p className="eventWizardError" role="alert">
+                {formatApiError(participatingQuery.error, 'Не удалось загрузить ваши записи')}
+              </p>
+              <button type="button" className="eventDetailBtn" onClick={() => void participatingQuery.refetch()}>
+                Повторить
+              </button>
+            </div>
+          ) : null}
+          {participatingQuery.isLoading ? <p className="pageSub">Загрузка…</p> : null}
           {shownParticipatingCards.length ? (
             <EventCardsGrid cards={shownParticipatingCards} />
           ) : (
-            <p className="myEventsEmpty">
-              {period === 'active'
-                ? 'Нет предстоящих событий с отметкой «Пойду».'
-                : 'В архиве пока нет посещённых событий.'}
-            </p>
+            <p className="myEventsEmpty">{attendingEmpty}</p>
           )}
         </section>
       )}
-
-      <Link className="eventDetailBack myEventsBackLink" to="/">
-        ← Вернуться в ленту
-      </Link>
     </div>
   )
 }

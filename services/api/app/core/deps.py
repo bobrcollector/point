@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +61,19 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-async def require_moderator(user: User = Depends(require_admin)) -> User:
+_LOCAL_ADMIN_HOSTS = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
+
+
+async def require_admin_local(request: Request, user: User = Depends(require_admin)) -> User:
+    client_host = (request.client.host if request.client else "").lower()
+    if client_host not in _LOCAL_ADMIN_HOSTS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Админ-панель доступна только с этого компьютера",
+        )
+    return user
+
+
+async def require_moderator(user: User = Depends(require_admin_local)) -> User:
     """Совместимость: модерация только у admin."""
     return user

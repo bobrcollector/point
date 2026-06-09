@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.media import abs_media_url
-from app.models import Category, Event
+from app.models import Category, Event, EventParticipation
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -234,6 +234,20 @@ async def get_event_by_id(session: AsyncSession, event_id: int) -> Event | None:
     res = await session.execute(
         select(Event)
         .where(Event.id == event_id, Event.status == "approved", Event.is_hidden.is_(False))
+        .options(selectinload(Event.categories), selectinload(Event.ticket_types))
+    )
+    return res.scalar_one_or_none()
+
+
+async def get_event_for_participant(session: AsyncSession, event_id: int, user_id: int) -> Event | None:
+    res = await session.execute(
+        select(Event)
+        .join(EventParticipation, EventParticipation.event_id == Event.id)
+        .where(
+            Event.id == event_id,
+            EventParticipation.user_id == user_id,
+            Event.is_hidden.is_(False),
+        )
         .options(selectinload(Event.categories), selectinload(Event.ticket_types))
     )
     return res.scalar_one_or_none()

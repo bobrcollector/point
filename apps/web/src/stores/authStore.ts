@@ -5,14 +5,14 @@ const TOKEN_KEY = 'point:accessToken'
 
 function readToken(): string | null {
   try {
+    const fromLocal = localStorage.getItem(TOKEN_KEY)
+    if (fromLocal) return fromLocal
+    // Миграция: ранее токен мог лежать только в sessionStorage (мобильные сессии).
     const fromSession = sessionStorage.getItem(TOKEN_KEY)
-    if (fromSession) return fromSession
-    // Одноразовая миграция: раньше токен лежал в localStorage — переносим в session.
-    const legacy = localStorage.getItem(TOKEN_KEY)
-    if (legacy) {
-      sessionStorage.setItem(TOKEN_KEY, legacy)
-      localStorage.removeItem(TOKEN_KEY)
-      return legacy
+    if (fromSession) {
+      localStorage.setItem(TOKEN_KEY, fromSession)
+      sessionStorage.removeItem(TOKEN_KEY)
+      return fromSession
     }
     return null
   } catch {
@@ -21,9 +21,9 @@ function readToken(): string | null {
 }
 
 function writeToken(token: string) {
-  sessionStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(TOKEN_KEY, token)
   try {
-    localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
   } catch {
     // ignore
   }
@@ -31,8 +31,8 @@ function writeToken(token: string) {
 
 function clearStoredToken() {
   try {
-    sessionStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
   } catch {
     // ignore
   }

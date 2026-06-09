@@ -24,7 +24,7 @@ def _vapid_private_key() -> str:
     if not path.is_absolute():
         path = _API_DIR / path
     if path.is_file():
-        return path.read_text(encoding="utf-8")
+        return str(path.resolve())
     return raw
 
 
@@ -43,11 +43,13 @@ async def create_notification(
     if send_push:
         user = await session.get(User, user_id)
         if user and user.notify_push:
-            await _send_push_to_user(
+            await send_push_to_user(
                 session,
                 user_id=user_id,
                 title=push_title or _push_title(n_type),
                 body=content,
+                url=_push_url(n_type),
+                tag=n_type,
             )
     return row
 
@@ -110,26 +112,63 @@ def _push_title(n_type: str) -> str:
     return labels.get(n_type, "Point")
 
 
-async def _send_push_to_user(session: AsyncSession, *, user_id: int, title: str, body: str) -> None:
+def _push_url(n_type: str) -> str:
+    if n_type == "moderation_status":
+        return "/my/organized"
+    return "/notifications"
+
+
+def _push_audience(endpoint: str) -> str:
+    from urllib.parse import urlparse
+
+    parsed = urlparse(endpoint)
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _is_mozilla_push(endpoint: str) -> bool:
+    return "mozilla.com" in endpoint
+
+
+def _push_ttl(endpoint: str) -> int:
+    # Firefox/Mozilla: ttl=0 иногда отбрасывает сообщение, если браузер офлайн.
+    return 86_400 if _is_mozilla_push(endpoint) else 0
+
+
+async def send_push_to_user(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    title: str,
+    body: str,
+    url: str = "/notifications",
+    tag: str = "point",
+) -> tuple[int, int]:
+    """Отправляет push всем подпискам пользователя. Возвращает (успех, ошибки)."""
     private_key = _vapid_private_key()
     if not private_key or not settings.vapid_public_key:
-        return
+        return 0, 0
     subs = (await session.execute(select(PushSubscription).where(PushSubscription.user_id == user_id))).scalars().all()
     if not subs:
-        return
+        return 0, 0
     try:
         from pywebpush import webpush, WebPushException
     except ImportError:
         logger.warning("pywebpush not installed; skip push")
-        return
+        return 0, 0
 
-    payload = json.dumps({"title": title, "body": body[:240]})
-    vapid_claims = {"sub": settings.vapid_claims_email}
+    payload = json.dumps({"title": title, "body": body[:240], "url": url, "tag": tag})
     dead: list[PushSubscription] = []
+    sent = 0
+    failed = 0
     for sub in subs:
         subscription_info: dict[str, Any] = {
             "endpoint": sub.endpoint,
             "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+        }
+        # Свежие claims на каждую подписку: pywebpush мутирует dict (aud/exp).
+        vapid_claims = {
+            "sub": settings.vapid_claims_email,
+            "aud": _push_audience(sub.endpoint),
         }
         try:
             webpush(
@@ -137,12 +176,17 @@ async def _send_push_to_user(session: AsyncSession, *, user_id: int, title: str,
                 data=payload,
                 vapid_private_key=private_key,
                 vapid_claims=vapid_claims,
+                ttl=_push_ttl(sub.endpoint),
             )
+            sent += 1
         except WebPushException as exc:
+            failed += 1
             status = getattr(getattr(exc, "response", None), "status_code", None)
-            if status in (404, 410):
+            if status in (404, 410, 401, 403):
                 dead.append(sub)
+                logger.warning("push rejected for user %s (%s): %s", user_id, status, exc)
             else:
-                logger.debug("push failed for user %s: %s", user_id, exc)
+                logger.warning("push failed for user %s: %s", user_id, exc)
     for sub in dead:
         await session.delete(sub)
+    return sent, failed

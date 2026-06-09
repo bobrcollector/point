@@ -1,8 +1,9 @@
 import { api } from '../../lib/api'
+import { resolveGalleryUrls, resolveMediaUrl } from '../../lib/mediaUrl'
 import { resizeImageForUpload } from '../../lib/resizeImage'
 import type { EventFormDraft, OrganizerEventDetail, OrganizerEventListItem } from './types'
 
-function draftToPayload(draft: EventFormDraft) {
+function draftFields(draft: EventFormDraft) {
   const dt = new Date(`${draft.date}T${draft.time}`)
   if (Number.isNaN(dt.getTime())) {
     throw new Error('Укажите корректные дату и время')
@@ -21,7 +22,6 @@ function draftToPayload(draft: EventFormDraft) {
     is_for_children: draft.isForChildren,
     age_rating_min: draft.ageRatingMin,
     requires_registration: draft.requiresRegistration,
-    status: draft.status,
     ticket_types: draft.requiresRegistration
       ? draft.ticketTypes
           .filter((t) => t.name.trim())
@@ -32,6 +32,26 @@ function draftToPayload(draft: EventFormDraft) {
             sort_order: i
           }))
       : []
+  }
+}
+
+function draftToPayload(draft: EventFormDraft) {
+  return { ...draftFields(draft), status: draft.status }
+}
+
+/** PATCH не передаёт status — иначе сохранение формы затирает решение модерации. */
+function draftToUpdatePayload(draft: EventFormDraft) {
+  return draftFields(draft)
+}
+
+function withResolvedOrganizerMedia<T extends OrganizerEventDetail | OrganizerEventListItem>(item: T): T {
+  return {
+    ...item,
+    cover_image_url:
+      resolveMediaUrl(item.cover_image_url ?? null) ?? item.cover_image_url ?? null,
+    ...(('gallery_urls' in item && item.gallery_urls)
+      ? { gallery_urls: resolveGalleryUrls(item.gallery_urls) }
+      : {}),
   }
 }
 
@@ -69,17 +89,19 @@ export async function listMyOrganizerEvents(): Promise<OrganizerEventListItem[]>
   const res = await api.get<{ items: OrganizerEventListItem[]; total: number }>('/api/v1/organizer/events')
   const items = res.data?.items
   if (!Array.isArray(items)) return []
-  return items.map((item) => ({
-    ...item,
-    event_datetime:
-      typeof item.event_datetime === 'string' ? item.event_datetime : String(item.event_datetime),
-    status: item.status as OrganizerEventListItem['status']
-  }))
+  return items.map((item) =>
+    withResolvedOrganizerMedia({
+      ...item,
+      event_datetime:
+        typeof item.event_datetime === 'string' ? item.event_datetime : String(item.event_datetime),
+      status: item.status as OrganizerEventListItem['status'],
+    }),
+  )
 }
 
 export async function getOrganizerEvent(eventId: number): Promise<OrganizerEventDetail> {
   const res = await api.get<OrganizerEventDetail>(`/api/v1/organizer/events/${eventId}`)
-  return res.data
+  return withResolvedOrganizerMedia(res.data)
 }
 
 export async function createOrganizerEvent(draft: EventFormDraft): Promise<OrganizerEventDetail> {
@@ -88,7 +110,7 @@ export async function createOrganizerEvent(draft: EventFormDraft): Promise<Organ
 }
 
 export async function updateOrganizerEvent(eventId: number, draft: EventFormDraft): Promise<OrganizerEventDetail> {
-  const res = await api.patch<OrganizerEventDetail>(`/api/v1/organizer/events/${eventId}`, draftToPayload(draft))
+  const res = await api.patch<OrganizerEventDetail>(`/api/v1/organizer/events/${eventId}`, draftToUpdatePayload(draft))
   return res.data
 }
 
@@ -111,5 +133,5 @@ export async function uploadEventImage(file: File): Promise<string> {
   const form = new FormData()
   form.append('file', prepared)
   const res = await api.post<{ url: string }>('/api/v1/organizer/uploads', form)
-  return res.data.url
+  return resolveMediaUrl(res.data.url) ?? res.data.url
 }

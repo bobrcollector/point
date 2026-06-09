@@ -31,6 +31,8 @@ export type OrganizerEventListItem = {
   event_datetime: string
   location: string
   status: EventStatus
+  is_hidden?: boolean
+  moderation_reason?: string | null
   price: number
   cover_image_url: string | null
   categories: { id: number; name: string }[]
@@ -46,6 +48,8 @@ export type OrganizerEventDetail = {
   address_detail: string
   event_datetime: string
   status: EventStatus
+  is_hidden?: boolean
+  moderation_reason?: string | null
   price: number
   cover_image_url: string | null
   gallery_urls: string[]
@@ -54,6 +58,7 @@ export type OrganizerEventDetail = {
   is_for_children: boolean
   age_rating_min: number
   requires_registration: boolean
+  participants_count: number
   organizer_name: string
   category_ids: number[]
   categories: { id: number; name: string }[]

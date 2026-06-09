@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
+import { EventDetailSchema } from '../catalog/queries'
+import type { ApiEventDetail } from '../catalog/types'
 import { api } from '../../lib/api'
+import { resolveGalleryUrls, resolveMediaUrl } from '../../lib/mediaUrl'
 
 const AdminUserSchema = z.object({
   user_id: z.number(),
@@ -30,6 +33,8 @@ const ComplaintSchema = z.object({
   reason: z.string(),
   status: z.string(),
   created_at: z.string(),
+  user_name: z.string(),
+  event_title: z.string(),
 })
 
 const MetricsSchema = z.object({
@@ -38,6 +43,12 @@ const MetricsSchema = z.object({
   active_events_today: z.number(),
   active_events_today_or_future: z.number(),
   new_complaints: z.number(),
+  pending_events: z.number(),
+  banned_users: z.number(),
+  upcoming_events: z.number(),
+  total_participations: z.number(),
+  total_reviews: z.number(),
+  avg_event_rating: z.number().nullable(),
 })
 
 const ChartPointSchema = z.object({ label: z.string(), count: z.number() })
@@ -76,6 +87,16 @@ export function useAdminEventsChart() {
   })
 }
 
+export function useAdminComplaintsChart() {
+  return useQuery({
+    queryKey: ['admin', 'complaints-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/complaints-chart')
+      return z.array(ChartPointSchema).parse(res.data)
+    },
+  })
+}
+
 export function useAdminUsers() {
   return useQuery({
     queryKey: ['admin', 'users'],
@@ -93,6 +114,28 @@ export function useAdminPendingEvents() {
       const res = await api.get('/api/v1/admin/events/pending')
       return z.array(AdminEventSchema).parse(res.data)
     },
+  })
+}
+
+export function useAdminEventDetail(eventId: number | undefined, enabled = false) {
+  return useQuery({
+    queryKey: ['admin', 'event', eventId],
+    enabled: enabled && Boolean(eventId && eventId > 0),
+    queryFn: async (): Promise<ApiEventDetail> => {
+      const res = await api.get(`/api/v1/admin/events/${eventId}`)
+      const parsed = EventDetailSchema.safeParse(res.data)
+      if (!parsed.success) {
+        console.error('admin event detail schema', parsed.error.flatten())
+        throw new Error('Сервер вернул некорректные данные события')
+      }
+      const item = parsed.data
+      return {
+        ...item,
+        cover_image_url: resolveMediaUrl(item.cover_image_url ?? null) ?? item.cover_image_url ?? null,
+        gallery_urls: resolveGalleryUrls(item.gallery_urls),
+      }
+    },
+    staleTime: 30_000,
   })
 }
 
@@ -128,12 +171,23 @@ export function useAdminMutations() {
     onSuccess: invalidate,
   })
   const moderate = useMutation({
-    mutationFn: (args: { eventId: number; decision: 'approve' | 'reject'; reason?: string }) =>
+    mutationFn: (args: {
+      eventId: number
+      decision: 'approve' | 'reject'
+      reason?: string
+      block_organizer?: boolean
+    }) =>
       api.put(`/api/v1/admin/events/${args.eventId}/moderate`, {
         decision: args.decision,
         reason: args.reason,
+        block_organizer: args.block_organizer,
       }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate()
+      void qc.invalidateQueries({ queryKey: ['organizer'] })
+      void qc.invalidateQueries({ queryKey: ['catalog'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
   })
   const resolveComplaint = useMutation({
     mutationFn: (args: {
@@ -147,7 +201,11 @@ export function useAdminMutations() {
         hide_event: args.hide_event,
         block_organizer: args.block_organizer,
       }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate()
+      void qc.invalidateQueries({ queryKey: ['catalog'] })
+      void qc.invalidateQueries({ queryKey: ['organizer', 'events'] })
+    },
   })
 
   return { ban, unban, removeUser, setRole, moderate, resolveComplaint }

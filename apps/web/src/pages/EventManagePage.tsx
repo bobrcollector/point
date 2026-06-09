@@ -55,9 +55,11 @@ export function EventManagePage({ mode }: Props) {
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<EventFormDraft>(EMPTY_EVENT_DRAFT)
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [geocoding, setGeocoding] = useState(false)
   const geocodeAbortRef = useRef<AbortController | null>(null)
+  const errorRef = useRef<HTMLParagraphElement | null>(null)
 
   const categoriesQuery = useCategories()
   const detailQuery = useOrganizerEventDetail(eventId)
@@ -119,6 +121,12 @@ export function EventManagePage({ mode }: Props) {
 
   const patch = (part: Partial<EventFormDraft>) => setDraft((d) => ({ ...d, ...part }))
 
+  const showError = (msg: string, targetStep?: number) => {
+    setError(msg)
+    if (targetStep != null) setStep(targetStep)
+    queueMicrotask(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
+  }
+
   const validateStep = (s: number): string | null => {
     if (s === 0) {
       if (draft.title.trim().length < 2) return 'Укажите название (минимум 2 символа)'
@@ -127,6 +135,9 @@ export function EventManagePage({ mode }: Props) {
     }
     if (s === 1) {
       if (!draft.date) return 'Укажите дату'
+      const dt = new Date(`${draft.date}T${draft.time}`)
+      if (Number.isNaN(dt.getTime())) return 'Укажите корректные дату и время'
+      if (dt.getTime() < Date.now()) return 'Дата события должна быть в будущем'
       if (!draft.location.trim()) return 'Укажите название площадки или отметьте точку на карте'
       if (draft.latitude == null || draft.longitude == null) return 'Укажите координаты на карте или кнопкой ниже'
     }
@@ -139,7 +150,7 @@ export function EventManagePage({ mode }: Props) {
   const next = () => {
     const msg = validateStep(step)
     if (msg) {
-      setError(msg)
+      showError(msg)
       return
     }
     setError(null)
@@ -192,19 +203,19 @@ export function EventManagePage({ mode }: Props) {
   }
 
   const save = async (publish: boolean, asDraft = false) => {
-    const lastStep = draft.requiresRegistration ? 3 : 2
-    for (let s = 0; s <= lastStep; s++) {
+    const stepsToValidate = draft.requiresRegistration ? [0, 1, 2, 3] : [0, 1, 2]
+    for (const s of stepsToValidate) {
       const msg = validateStep(s)
       if (msg) {
-        setError(msg)
-        setStep(s)
+        showError(msg, s)
         return
       }
     }
     setError(null)
+    setSaving(true)
     const payload: EventFormDraft = {
       ...draft,
-      status: asDraft ? 'draft' : draft.status === 'approved' ? 'approved' : 'draft'
+      status: asDraft ? 'draft' : draft.status === 'approved' ? 'approved' : 'draft',
     }
     try {
       let savedId = eventId
@@ -219,20 +230,25 @@ export function EventManagePage({ mode }: Props) {
         if (publish) await publishMut.mutateAsync(eventId)
       }
       if (!savedId) return
-      await queryClient.invalidateQueries({ queryKey: ['organizer', 'events'] })
-      await queryClient.refetchQueries({ queryKey: ['organizer', 'events'] })
+
       if (publish) {
         navigate('/my/organized', {
           state: {
             notice: 'Событие успешно отправлено на модерацию',
-            period: 'moderation',
+            timeScope: 'upcoming',
           },
         })
       } else {
-        navigate('/my')
+        navigate('/my/organized', { state: { timeScope: 'upcoming' } })
+      }
+      void queryClient.invalidateQueries({ queryKey: ['organizer', 'events'] })
+      if (publish) {
+        void queryClient.invalidateQueries({ queryKey: ['admin'] })
       }
     } catch (err) {
-      setError(formatApiError(err, 'Не удалось сохранить событие'))
+      showError(formatApiError(err, publish ? 'Не удалось отправить на модерацию' : 'Не удалось сохранить событие'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -251,12 +267,33 @@ export function EventManagePage({ mode }: Props) {
     )
   }
 
+  const isRejected = mode === 'edit' && draft.status === 'rejected'
+  const isHiddenFromFeed =
+    mode === 'edit' && draft.status === 'approved' && Boolean(detailQuery.data?.is_hidden)
+  const rejectionReason = detailQuery.data?.moderation_reason?.trim() || 'Причина не указана.'
+  const hiddenReason =
+    detailQuery.data?.moderation_reason?.trim() || 'Событие удалено из каталога по жалобе.'
+
   return (
     <div className="page myEventsPage eventManagePage">
       <header className="myEventsHeader">
         <div>
           <h1 className="myEventsTitle">{mode === 'create' ? 'Создать событие' : 'Редактировать событие'}</h1>
-          <p className="eventDetailMuted">Многошаговая форма для организаторов</p>
+          {isRejected ? (
+            <div className="organizerEventRejectedBanner" role="status">
+              <strong>Событие отклонено</strong>
+              <p>{rejectionReason}</p>
+              <p className="eventDetailMuted">Исправьте замечания и отправьте снова на модерацию.</p>
+            </div>
+          ) : isHiddenFromFeed ? (
+            <div className="organizerEventRejectedBanner" role="status">
+              <strong>Удалено из ленты</strong>
+              <p>{hiddenReason}</p>
+              <p className="eventDetailMuted">Событие больше не отображается в каталоге для пользователей.</p>
+            </div>
+          ) : (
+            <p className="eventDetailMuted">Многошаговая форма для организаторов</p>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {mode === 'edit' && eventId ? (
@@ -295,7 +332,7 @@ export function EventManagePage({ mode }: Props) {
 
       <div className="eventWizardPanel">
         {error ? (
-          <p className="eventWizardError" role="alert">
+          <p ref={errorRef} className="eventWizardError" role="alert">
             {error}
           </p>
         ) : null}
@@ -616,20 +653,24 @@ export function EventManagePage({ mode }: Props) {
               <button
                 type="button"
                 className="eventDetailBtn"
-                disabled={createMut.isPending || updateMut.isPending}
+                disabled={saving}
                 onClick={() => void save(false)}
               >
-                Сохранить черновик
+                {saving ? 'Сохранение…' : 'Сохранить черновик'}
               </button>
             ) : null}
             <button
               type="button"
               className="homePrimaryBtn"
               style={{ display: 'inline-flex' }}
-              disabled={createMut.isPending || updateMut.isPending || publishMut.isPending}
+              disabled={saving}
               onClick={() => void save(true)}
             >
-              {mode === 'edit' && draft.status === 'approved' ? 'Сохранить' : 'На модерацию'}
+              {saving
+                ? 'Отправка…'
+                : mode === 'edit' && draft.status === 'approved'
+                  ? 'Сохранить'
+                  : 'На модерацию'}
             </button>
           </>
         )}

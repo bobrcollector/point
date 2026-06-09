@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:lan": "vite --host 0.0.0.0",
+    "dev:lan": "vite --host 0.0.0.0 --mode lan",
     "dev:pwa:lan": "vite --host 0.0.0.0 --mode pwa",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
@@ -29,15 +29,17 @@
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "selfsigned": "^5.5.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vitest": "^3.2.4",
     "vite": "^8.0.10",
-    "vite-plugin-pwa": "^1.0.3"
+    "vite-plugin-pwa": "^1.0.3",
+    "vitest": "^3.2.4"
   }
 }

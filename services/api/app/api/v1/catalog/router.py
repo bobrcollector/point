@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.v1.catalog import service as catalog_service
 from app.api.v1.catalog.schemas import (
@@ -13,7 +14,7 @@ from app.api.v1.catalog.schemas import (
     EventReviewOut,
     EventsResponse,
 )
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_user_optional
 from app.db.session import get_db
 from app.models import Event, EventFavorite, EventParticipation, EventReview, User
 
@@ -109,6 +110,24 @@ async def get_my_event_interactions(
         "favorite_event_ids": list(favorites),
         "participating_event_ids": list(participations),
     }
+
+
+@router.get("/me/participating-events", response_model=EventsResponse)
+async def get_my_participating_events(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    rows = (
+        await session.execute(
+            select(Event)
+            .join(EventParticipation, EventParticipation.event_id == Event.id)
+            .where(EventParticipation.user_id == user.id, Event.is_hidden.is_(False))
+            .options(selectinload(Event.categories), selectinload(Event.ticket_types))
+            .order_by(EventParticipation.created_at.desc())
+        )
+    ).scalars().all()
+    items = [catalog_service.event_to_item_dict(ev, None) for ev in rows]
+    return {"total": len(items), "items": items}
 
 
 @router.put("/events/{event_id}/favorite", response_model=EventInteractionOut)
@@ -211,8 +230,14 @@ async def create_event_review(
 
 
 @router.get("/events/{event_id}", response_model=EventDetail)
-async def get_event_detail(event_id: int, session: AsyncSession = Depends(get_db)):
+async def get_event_detail(
+    event_id: int,
+    session: AsyncSession = Depends(get_db),
+    user: User | None = Depends(get_current_user_optional),
+):
     ev = await catalog_service.get_event_by_id(session, event_id)
+    if ev is None and user is not None:
+        ev = await catalog_service.get_event_for_participant(session, event_id, user.id)
     if ev is None:
         raise HTTPException(status_code=404, detail="Событие не найдено")
     return EventDetail.model_validate(catalog_service.event_to_detail_dict(ev))

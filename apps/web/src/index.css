@@ -172,6 +172,10 @@ body {
   filter: brightness(0) invert(1);
 }
 
+.brandLogoPurple {
+  filter: none;
+}
+
 .sidebarCityPicker {
   min-width: 0;
   flex: 1;
@@ -2528,23 +2532,20 @@ button.mapEventCardGhost {
   }
 
   .mobileTabBar {
-    display: block;
+    display: flex;
+    justify-content: center;
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
     z-index: 1000;
     box-sizing: border-box;
-    padding: 5px max(12px, env(safe-area-inset-left, 0px)) calc(5px + env(safe-area-inset-bottom, 0px))
-      max(12px, env(safe-area-inset-right, 0px));
-    background: rgba(18, 10, 42, 0.78);
-    -webkit-backdrop-filter: blur(18px) saturate(1.35);
-    backdrop-filter: blur(18px) saturate(1.35);
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow:
-      0 -1px 0 rgba(255, 255, 255, 0.06) inset,
-      0 -12px 40px rgba(0, 0, 0, 0.18);
-    /* Привязка к viewport: портал в body + высокий z-index */
+    pointer-events: none;
+    padding: 0 max(14px, env(safe-area-inset-left, 0px))
+      calc(12px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-right, 0px));
+    background: transparent;
+    border: 0;
+    box-shadow: none;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
@@ -2552,11 +2553,131 @@ button.mapEventCardGhost {
   .mobileTabBarTrack {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
+    gap: 4px;
     align-items: stretch;
-    padding: 0;
-    max-width: min(420px, 100%);
-    margin-inline: auto;
+    width: min(400px, 100%);
+    flex: 0 1 min(400px, 100%);
+    padding: 6px 8px;
+    pointer-events: auto;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(18, 10, 42, 0.78);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    backdrop-filter: blur(18px) saturate(1.35);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 10px 36px rgba(0, 0, 0, 0.22);
+  }
+
+  .mobileTopBar {
+    display: flex;
+    justify-content: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1100;
+    box-sizing: border-box;
+    pointer-events: none;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    padding-left: max(14px, env(safe-area-inset-left, 0px));
+    padding-right: max(14px, env(safe-area-inset-right, 0px));
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+
+  .mobileTopBarInner {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    gap: 8px;
+    width: min(400px, 100%);
+    flex: 0 1 min(400px, 100%);
+    min-height: 48px;
+    padding: 4px 8px;
+    pointer-events: auto;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(18, 10, 42, 0.78);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    backdrop-filter: blur(18px) saturate(1.35);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 10px 36px rgba(0, 0, 0, 0.22);
+  }
+
+  .mobileTopBarLogo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobileTopBarLogo .brandLogo {
+    width: 28px;
+    height: 26px;
+    filter: none;
+  }
+
+  .mobileTopBarTitle {
+    margin: 0;
+    min-width: 0;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobileTopBarNotif,
+  .mobileTopBarSpacer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  .mobileTopBarNotif {
+    position: relative;
+    border-radius: 14px;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.88);
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobileTopBarNotif svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mobileTopBarNotif.active {
+    color: #fff;
+    background: var(--primary);
+  }
+
+  .mobileTopBarNotif .navUnreadDot {
+    top: 9px;
+    right: 9px;
+    box-shadow: 0 0 0 2px rgba(18, 10, 42, 0.78);
+  }
+
+  .mobileTopBarNotif.active .navUnreadDot {
+    box-shadow: 0 0 0 2px var(--primary);
   }
 
   .mobileTabItem {
@@ -2775,9 +2896,9 @@ button.mapEventCardGhost {
   }
 
   .main {
-    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-top: calc(68px + env(safe-area-inset-top, 0px));
     padding-right: max(12px, env(safe-area-inset-right, 0px));
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
     padding-left: max(12px, env(safe-area-inset-left, 0px));
   }
 
@@ -2890,7 +3011,9 @@ button.mapEventCardGhost {
   }
 
   .homeToolbarTrailing {
-    margin-left: auto;
+    width: 100%;
+    margin-left: 0;
+    justify-content: center;
   }
 
   .map {
@@ -3849,26 +3972,6 @@ button.mapEventCardGhost {
   justify-content: flex-start;
 }
 
-.myEventsCreateFab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
-  color: var(--accent);
-  text-decoration: none;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
-}
-
-.myEventsCreateFab:hover {
-  background: color-mix(in srgb, var(--accent) 20%, var(--panel));
-  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
-}
-
 .myEventsNotice {
   display: flex;
   align-items: center;
@@ -3903,6 +4006,66 @@ button.mapEventCardGhost {
 
 .myEventsHeader {
   margin-bottom: 24px;
+}
+
+.myEventsTimeSegWrap {
+  display: flex;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.myEventsTimeSegWrapTop {
+  margin-bottom: 14px;
+}
+
+.myEventsTimeSegWrapToolbar {
+  display: none;
+}
+
+.myEventsTimeSeg {
+  width: 100%;
+  max-width: 280px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.myEventsTimeSeg .segBtn {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.listFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin: 0 0 16px;
+}
+
+.listFilterLabel {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.listFilterSelect {
+  min-width: min(100%, 240px);
+  flex: 1 1 180px;
+  max-width: 320px;
+}
+
+@media (min-width: 721px) {
+  .myEventsTimeSegWrapTop {
+    display: none;
+  }
+
+  .myEventsTimeSegWrapToolbar {
+    display: flex;
+  }
 }
 
 .myEventsBackLink {
@@ -4222,6 +4385,71 @@ button.mapEventCardGhost {
 .eventWizardTicketRow { display: grid; grid-template-columns: 1fr 100px 90px 40px; gap: 8px; margin-bottom: 8px; }
 .eventListCardActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
+.organizerEventCardRejected {
+  border: 1px solid rgba(239, 68, 68, 0.42);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.92) 0%, var(--panel) 48%);
+  box-shadow: 0 4px 18px rgba(185, 28, 28, 0.08);
+}
+
+.organizerEventCardRejected:hover {
+  box-shadow: 0 8px 24px rgba(185, 28, 28, 0.14);
+}
+
+.cardCoverOverlayRejected {
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.55) 0%, rgba(127, 29, 29, 0.78) 100%);
+}
+
+.organizerEventCardRejectedBadge {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fff;
+  font-weight: 700;
+}
+
+.organizerEventCardRejectedBody {
+  margin-top: 4px;
+}
+
+.organizerEventCardRejectedTitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #b91c1c;
+}
+
+.organizerEventCardRejectedReason {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #7f1d1d;
+  white-space: pre-wrap;
+}
+
+.organizerEventRejectedBanner {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(254, 242, 242, 0.95);
+}
+
+.organizerEventRejectedBanner strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #b91c1c;
+  font-size: 15px;
+}
+
+.organizerEventRejectedBanner p {
+  margin: 0 0 6px;
+  color: #7f1d1d;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.organizerEventRejectedBanner .eventDetailMuted {
+  margin: 0;
+}
+
 .organizerEventCard {
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
@@ -4330,18 +4558,369 @@ button.mapEventCardGhost {
 /* Admin dashboard & notifications */
 .adminTabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .adminTabPanel { display: flex; flex-direction: column; gap: 12px; }
-.adminMetricsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
-.adminMetricTile { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; }
+.adminDashboardSections { display: flex; flex-direction: column; gap: 16px; }
+.adminStatSection { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); }
+.adminStatSectionUrgent { border-color: color-mix(in srgb, #b91c1c 28%, var(--border)); background: color-mix(in srgb, #b91c1c 4%, var(--panel)); }
+.adminStatSectionTitle { margin: 0 0 16px; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.adminStatChart { margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border); }
+.adminStatChartTitle { margin: 0 0 12px; font-size: 14px; font-weight: 700; color: var(--muted); }
+.adminMetricsGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.adminStatSection .adminMetricTile { background: color-mix(in srgb, var(--bg) 55%, var(--panel)); }
+.adminStatSectionUrgent .adminMetricTile { background: color-mix(in srgb, var(--panel) 88%, #fff); }
+.adminMetricTile { border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; }
 .adminMetricTileWarn .adminMetricValue { color: #b91c1c; }
 .adminMetricValue { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; }
 .adminMetricLabel { font-size: 13px; color: var(--muted); margin-top: 4px; }
-.adminChartsRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.adminCardTitle { margin: 0 0 12px; font-size: 15px; font-weight: 800; }
-.adminChart { display: flex; align-items: flex-end; gap: 8px; min-height: 120px; padding-top: 8px; }
-.adminChartCol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100px; justify-content: flex-end; }
-.adminChartBar { width: 100%; max-width: 36px; background: linear-gradient(180deg, var(--primary), var(--primary-2)); border-radius: 6px 6px 2px 2px; min-height: 8px; }
-.adminChartLabel { font-size: 10px; color: var(--muted); }
+.adminChartsRow { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.adminCardTitle { margin: 0 0 16px; font-size: 16px; font-weight: 800; }
+.adminChartWrap { display: flex; align-items: flex-start; gap: 10px; padding-top: 6px; --admin-chart-plot-h: 220px; }
+.adminChartYAxis { position: relative; flex-shrink: 0; height: var(--admin-chart-plot-h); padding-right: 6px; }
+.adminChartYTick { position: absolute; right: 0; font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1; text-align: right; font-variant-numeric: tabular-nums; transform: translateY(-50%); }
+.adminChartMain { flex: 1; min-width: 0; }
+.adminChartPlot { position: relative; height: var(--admin-chart-plot-h); overflow: visible; border-left: 1px solid color-mix(in srgb, var(--muted) 55%, var(--border)); }
+.adminChartGrid { position: absolute; inset: 0; pointer-events: none; }
+.adminChartGridLine { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--border) 85%, transparent); transform: translateY(-50%); }
+.adminChartGridLineV { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--primary) 12%, var(--border)); transform: translateX(-50%); }
+.adminLineChartSvg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.adminLineChartPath { fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.adminLineChartMarkers { position: absolute; inset: 0; pointer-events: none; }
+.adminLineChartMarker { position: absolute; width: 0; height: 0; }
+.adminLineChartDot { position: absolute; left: 0; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid var(--panel); box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent); transform: translate(-50%, -50%); }
+.adminLineChartMarker .adminChartValue { position: absolute; left: 0; top: 0; font-size: 12px; font-weight: 800; color: var(--text); line-height: 1; white-space: nowrap; transform: translate(-50%, calc(-100% - 8px)); }
+.adminChartXAxis { display: grid; gap: 0; margin-top: 0; border-top: 1px solid color-mix(in srgb, var(--muted) 55%, var(--border)); }
+.adminChartXSlot { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 8px; min-width: 0; }
+.adminChartXTick { width: 1px; height: 10px; background: color-mix(in srgb, var(--muted) 55%, var(--border)); flex-shrink: 0; }
+.adminChartLabel { position: static; transform: none; max-width: none; width: 100%; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.2; font-variant-numeric: tabular-nums; }
+@media (min-width: 900px) {
+  .adminChartWrap { --admin-chart-plot-h: 280px; }
+  .adminChartYTick { font-size: 13px; }
+  .adminChartLabel { font-size: 12px; }
+  .adminChartValue { font-size: 13px; }
+}
 .adminModal { max-width: 420px; }
+
+.adminRejectModal {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.adminRejectModalTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.adminRejectModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adminRejectModalTextarea {
+  min-height: 110px;
+  resize: vertical;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.adminRejectModalCheck {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.adminRejectModalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.eventReportModal {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.eventReportModalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eventReportModalTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.eventReportModalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.eventReportModalField {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.eventReportModalTextarea {
+  min-height: 110px;
+  resize: vertical;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.eventReportModalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.adminComplaintModal {
+  width: min(760px, 100%);
+  max-height: min(92vh, 920px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+.adminComplaintModalSection {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.adminComplaintModalSection:last-child {
+  border-bottom: none;
+}
+
+.adminComplaintModalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.adminComplaintModalTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.adminComplaintSectionTitle {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.adminComplaintInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+}
+
+.adminComplaintInfoGrid div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.adminComplaintInfoGrid dt {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adminComplaintInfoGrid dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.adminComplaintReasonBox {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adminComplaintReasonBox p {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(109, 40, 217, 0.04);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.adminComplaintEventPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adminComplaintEventCover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(109, 40, 217, 0.06);
+}
+
+.adminComplaintEventHead {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adminComplaintEventBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adminComplaintEventTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.adminComplaintEventMeta {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.adminComplaintEventBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adminComplaintEventBlockTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adminComplaintEventDesc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.adminComplaintTicketList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adminComplaintTicketList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 14px;
+}
+
+.adminComplaintGallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+
+.adminComplaintGalleryImg {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.adminComplaintBlockCheck {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.adminComplaintBlockCheck strong {
+  display: block;
+  font-weight: 750;
+}
+
+.adminComplaintBlockCheckHint {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.adminComplaintActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
 .notifList { display: flex; flex-direction: column; gap: 10px; max-width: none; }
 .notifRow { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; width: 100%; padding: 16px 18px; border-radius: 20px; border: 1px solid var(--border); background: var(--panel); font: inherit; box-shadow: var(--shadow); }
 .notifRowUnread { border-color: rgba(109, 40, 217, 0.35); background: rgba(109, 40, 217, 0.06); }
@@ -4349,4 +4928,67 @@ button.mapEventCardGhost {
 .notifRowBody { font-size: 14px; line-height: 1.45; }
 .notifRowTime { font-size: 12px; color: var(--muted); }
 .status-approved { background: rgba(16, 185, 129, 0.15); color: #047857; }
+
+/* Мобилка: контент по центру, без прижатия к правому краю */
+@media (max-width: 720px) {
+  .main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .main > * {
+    width: 100%;
+    max-width: min(440px, 100%);
+    margin-inline: auto;
+    box-sizing: border-box;
+  }
+
+  .homeToolbarTrailing,
+  .organizerEventCardIconRow,
+  .eventDetailActionsOrganizerRight,
+  .searchGroup.right,
+  .adminComplaintActions,
+  .eventReportModalActions,
+  .adminRejectModalActions,
+  .eventWizardNav,
+  .listFilterBar,
+  .adminCardBtns,
+  .eventDetailShareRow,
+  .myEventsNotice,
+  .adminCardHead {
+    margin-left: 0;
+    justify-content: center;
+  }
+
+  .adminCardHead {
+    align-items: center;
+  }
+
+  .listFilterBar {
+    justify-content: center;
+  }
+
+  .listFilterSelect {
+    margin-inline: auto;
+  }
+
+  .segmented,
+  .myEventsTimeSeg,
+  .homeToolbarSeg {
+    justify-content: center;
+  }
+
+  .segBtn,
+  .mapEventCardBtn,
+  .homePrimaryBtn,
+  .homeGhostBtn,
+  .eventDetailBtn {
+    text-align: center;
+  }
+
+  .statusBadge {
+    align-self: center;
+  }
+}
 

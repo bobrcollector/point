@@ -1,8 +1,8 @@
-import { isAxiosError } from 'axios'
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthFormLayout } from '../components/AuthFormLayout'
 import { useLogin, useMe } from '../features/auth/queries'
+import { formatApiError } from '../lib/apiError'
 import { useAuthStore } from '../stores/authStore'
 
 export function LoginPage() {
@@ -39,12 +39,7 @@ export function LoginPage() {
     }
   }
 
-  const err =
-    login.isError && isAxiosError(login.error)
-      ? (login.error.response?.data as { detail?: string })?.detail ?? 'Ошибка входа'
-      : login.isError
-        ? 'Ошибка входа'
-        : null
+  const err = login.isError ? formatApiError(login.error, 'Ошибка входа') : null
 
   return (
     <AuthFormLayout

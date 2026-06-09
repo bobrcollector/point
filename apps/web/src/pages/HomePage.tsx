@@ -338,6 +338,7 @@ export function HomePage() {
     if (slideCount <= 1) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const timer = window.setInterval(() => {
+      if (document.hidden) return
       if (isDraggingHeroRef.current) return
       if (heroUserInteractedRef.current && heroPointerInsideSpotlightRef.current) return
       setActiveSlide((prev) => (prev + 1) % slideCount)
@@ -360,15 +361,20 @@ export function HomePage() {
 
     beginSuppressScrollSync(550)
 
+    let rafId = 0
+    let attempts = 0
     const applyScroll = () => {
       const slideWidth = track.clientWidth
       if (!slideWidth) {
-        requestAnimationFrame(applyScroll)
+        if (attempts < 30) {
+          attempts += 1
+          rafId = requestAnimationFrame(applyScroll)
+        }
         return
       }
       track.scrollTo({ left: normalizedSlide * slideWidth, behavior: 'smooth' })
     }
-    requestAnimationFrame(applyScroll)
+    rafId = requestAnimationFrame(applyScroll)
 
     const onScrollEnd = () => {
       suppressScrollSyncRef.current = false
@@ -377,6 +383,7 @@ export function HomePage() {
     track.addEventListener('scrollend', onScrollEnd)
 
     return () => {
+      cancelAnimationFrame(rafId)
       track.removeEventListener('scrollend', onScrollEnd)
       window.clearTimeout(suppressScrollSyncTimerRef.current)
     }

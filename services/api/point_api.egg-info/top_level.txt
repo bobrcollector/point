@@ -1,4 +1,0 @@
-alembic
-app
-tests
-uploads
