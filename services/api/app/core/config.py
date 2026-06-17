@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_private_key: str = ""
     vapid_claims_email: str = "mailto:admin@point.local"
+    # True на production (pointme.site): админ-API через nginx, не только с localhost.
+    admin_allow_remote: bool = False
 
 
 settings = Settings()

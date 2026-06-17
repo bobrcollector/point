@@ -329,7 +329,7 @@ async def _sync_admin_activity_data(session) -> tuple[int, int]:
                 select(Complaint.id).where(Complaint.reason.like(f"{marker}|%"))
             )
             created_at = _chart_created_at(days_ago=days_ago, slot=300 + complaint_idx)
-            status = "pending" if complaint_idx <= 3 else "resolved"
+            status = "pending" if complaint_idx <= 6 else "resolved"
             reason = f"{marker}|{DEMO_COMPLAINT_REASONS[complaint_idx % len(DEMO_COMPLAINT_REASONS)]}"
             if existing is not None:
                 complaint = await session.get(Complaint, existing)
@@ -449,6 +449,7 @@ async def main() -> None:
             updated_covers = await _backfill_covers(session)
             inserted, updated_dates = await _sync_demo_events(session)
             chart_users, chart_rows = await _sync_admin_chart_data(session)
+            await session.flush()
             activity_created, activity_updated = await _sync_admin_activity_data(session)
             await _ensure_dev_admin(session)
             await session.commit()
@@ -494,6 +495,7 @@ async def main() -> None:
             session.add(_event_from_seed(raw, int(dev_user.id), cats))
 
         chart_users, _ = await _sync_admin_chart_data(session)
+        await session.flush()
         activity_created, _ = await _sync_admin_activity_data(session)
 
         await session.execute(text("SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT COALESCE(MAX(id), 1) FROM users))"))

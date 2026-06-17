@@ -3093,6 +3093,8 @@ button.mapEventCardGhost {
   max-width: 980px;
   margin: 0 auto;
   padding: 18px 18px 40px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .eventDetailBack {
@@ -4193,7 +4195,21 @@ button.mapEventCardGhost {
 
 @media (max-width: 900px) {
   .eventDetailInfoGrid > .eventDetailPanel {
-    min-width: 100%;
+    flex-basis: auto;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .eventDetailInfoGrid > .eventDetailGridWhen,
+  .eventDetailInfoGrid > .eventDetailGridAbout,
+  .eventDetailInfoGrid > .eventDetailGridPrice,
+  .eventDetailInfoGrid > .eventDetailGridShare,
+  .eventDetailInfoGrid > .eventDetailGridOrg {
+    flex-basis: auto;
+    width: 100%;
+    min-width: 0;
     max-width: 100%;
   }
 
@@ -4942,6 +4958,13 @@ button.mapEventCardGhost {
     max-width: min(440px, 100%);
     margin-inline: auto;
     box-sizing: border-box;
+  }
+
+  .main > .eventDetailPage,
+  .main > .homePage,
+  .main > .myEventsPage {
+    max-width: 100%;
+    min-width: 0;
   }
 
   .homeToolbarTrailing,

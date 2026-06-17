@@ -104,6 +104,22 @@ function upsertEnvValue(content, key, value) {
 
 
 
+function readYandexMapsApiKey() {
+  const candidates = [
+    path.join(root, 'apps', 'web', '.env'),
+    path.join(root, 'apps', 'web', '.env.local'),
+    path.join(root, 'apps', '.env'),
+  ]
+  for (const envFile of candidates) {
+    if (!fs.existsSync(envFile)) continue
+    const content = fs.readFileSync(envFile, 'utf8')
+    const match = content.match(/^VITE_YANDEX_MAPS_API_KEY\s*=\s*(.+)$/m)
+    const value = match?.[1]?.trim()
+    if (value) return value
+  }
+  return null
+}
+
 function mergeOrigins(content, origin) {
 
   const match = content.match(/^CORS_ORIGINS=(.*)$/m)
@@ -155,6 +171,7 @@ fs.writeFileSync(envPath, content.endsWith('\n') ? content : `${content}\n`, 'ut
 
 // Vite в lan-режиме слушает только Wi‑Fi/Ethernet IP, не Docker/WSL (172.17.x).
 
+const yandexMapsApiKey = readYandexMapsApiKey()
 const webLanEnv = [
   '# Сгенерировано scripts/ensure-lan-env.mjs — не редактировать вручную',
   `VITE_LAN_HOST=${ip}`,
@@ -162,6 +179,7 @@ const webLanEnv = [
   'VITE_API_BASE_URL=',
   '# Service worker для push на телефоне в LAN',
   'VITE_PWA_DEV=true',
+  ...(yandexMapsApiKey ? [`VITE_YANDEX_MAPS_API_KEY=${yandexMapsApiKey}`] : []),
   '',
 ].join('\n')
 

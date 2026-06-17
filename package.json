@@ -17,6 +17,8 @@
     "dev:all:lan": "node scripts/ensure-lan-env.mjs && node scripts/open-lan-firewall.mjs && concurrently -n api,web -c cyan,magenta \"npm run dev:api:lan\" \"npm run dev:web:lan\"",
     "open-firewall": "node scripts/open-lan-firewall.mjs",
     "open-firewall:admin": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/open-lan-firewall-admin.ps1",
+    "repair:wsl": "node scripts/repair-wsl-docker.mjs",
+    "reset:docker-wsl": "node scripts/reset-docker-wsl.mjs",
     "db:up": "docker compose -f infra/docker-compose.yml --env-file infra/.env up -d",
     "db:wait": "node scripts/wait-db.mjs",
     "db:migrate": "node scripts/ensure-api-env.mjs && node scripts/wait-db.mjs && node scripts/run-python.mjs -m alembic upgrade head",

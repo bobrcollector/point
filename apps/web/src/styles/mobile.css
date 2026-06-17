@@ -196,6 +196,22 @@
   /* ——— Событие ——— */
   .eventDetailPage {
     padding: 0 0 20px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: clip;
+  }
+
+  .eventDetailHero,
+  .eventDetailPanel,
+  .eventDetailBody,
+  .eventDetailInfoGrid,
+  .eventDetailActionsBar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .eventDetailHero,
@@ -203,10 +219,35 @@
     border-radius: 16px;
   }
 
+  .eventDetailHeroContent {
+    min-width: 0;
+  }
+
+  .eventDetailTitle,
+  .eventDetailMeta,
+  .eventDetailDesc,
+  .eventDetailMuted,
+  .eventDetailChatAuthor,
+  .eventDetailChatText,
+  .eventDetailTicketRow span {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .eventDetailInfoGrid {
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .eventDetailInfoGrid > .eventDetailPanel,
+  .eventDetailInfoGrid > .eventDetailGridWhen,
+  .eventDetailInfoGrid > .eventDetailGridAbout,
   .eventDetailInfoGrid > .eventDetailGridPrice,
   .eventDetailInfoGrid > .eventDetailGridShare,
-  .eventDetailInfoGrid > .eventDetailGridOrg {
+  .eventDetailInfoGrid > .eventDetailGridOrg,
+  .eventDetailInfoGrid > .eventDetailGridReviews {
+    flex: 1 1 auto;
+    flex-basis: auto;
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -252,9 +293,21 @@
   .eventDetailActionsOrganizer,
   .eventDetailActionsOrganizerRight {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     margin-left: 0;
     justify-content: stretch;
     gap: 8px;
+  }
+
+  .eventDetailActionsSecondary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .eventDetailActionsPrimary .eventDetailBtnToggle {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .eventDetailBtnOrganizerBadge {
@@ -291,15 +344,30 @@
     order: -1;
   }
 
-  .eventDetailInfoGrid {
+  .eventDetailTicketRow {
     flex-direction: column;
-    gap: 12px;
+    align-items: flex-start;
+    gap: 4px;
   }
 
-  .eventDetailInfoGrid > .eventDetailPanel {
-    flex: 1 1 auto;
-    width: 100%;
+  .eventDetailTicketRow span {
+    max-width: 100%;
+  }
+
+  .eventDetailGallery {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .eventDetailReviewsDropdown {
     min-width: 0;
+    width: 100%;
+  }
+
+  .eventDetailReviewItemHead .eventDetailChatAuthor {
+    min-width: 0;
+    flex: 1;
   }
 
   .eventDetailReviewsHead {
@@ -744,5 +812,218 @@
   .photoLightboxImg {
     max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     object-fit: contain;
+  }
+
+  /* ——— События: компактная типографика и блоки на узком экране ——— */
+  .main > .eventDetailPage,
+  .main > .myEventsPage,
+  .main > .homePage {
+    max-width: 100%;
+  }
+
+  .homePage .heroTitle {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .homePage .heroSlide {
+    height: clamp(168px, 36svh, 220px);
+  }
+
+  .sectionTitle {
+    font-size: 16px;
+  }
+
+  .sectionSub {
+    font-size: 12px;
+  }
+
+  .cardCover,
+  .eventListCardCover {
+    height: 120px;
+  }
+
+  .cardTitle,
+  .eventListCardTitle {
+    font-size: 15px;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  .cardBody .muted,
+  .cardMeta,
+  .eventListCardMeta {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+
+  .cardPrice,
+  .eventListCardPrice,
+  .cardBottom .price {
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .cardBottom .distance {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .rating {
+    font-size: 12px;
+  }
+
+  .organizerEventCardRejectedTitle {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+
+  .organizerEventCardRejectedReason {
+    font-size: 13px;
+  }
+
+  .eventDetailHeroMain {
+    min-height: clamp(140px, 34svh, 180px);
+  }
+
+  .eventDetailHeroContent {
+    padding: 12px 12px 10px;
+  }
+
+  .eventDetailTitle {
+    font-size: 18px;
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+
+  .eventDetailMeta {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .eventDetailBody {
+    margin-top: 12px;
+  }
+
+  .eventDetailPanel {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .eventDetailPanelTitle {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .eventDetailDesc,
+  .eventDetailMuted {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .eventDetailGridWhen .eventDetailDesc:first-of-type {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .eventDetailGridPrice .eventDetailDesc,
+  .eventDetailGridOrg > .eventDetailDesc:first-of-type {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+  }
+
+  .eventDetailTicketRow {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .eventDetailTicketRow span:first-child {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .eventDetailActionsBar {
+    margin-top: 10px;
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: 16px;
+  }
+
+  .eventDetailBtn,
+  .eventDetailBtnGhost {
+    white-space: normal;
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .eventDetailBtn {
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 12px;
+  }
+
+  .eventDetailBtnGhostLabel {
+    font-size: 12px;
+  }
+
+  .eventDetailShareBtn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mapEventCardMedia {
+    height: 96px;
+  }
+
+  .mapEventCardBody {
+    padding: 10px 12px 12px;
+    gap: 4px;
+  }
+
+  .mapEventCardTitle {
+    font-size: 15px;
+  }
+
+  .mapEventCardMeta {
+    font-size: 12px;
+  }
+
+  .mapEventCardPrice {
+    font-size: 13px;
+    margin-top: 2px;
+  }
+
+  .mapEventCardBtn,
+  .mapEventCardGhost {
+    font-size: 13px;
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .myEventsSectionTitle {
+    font-size: 16px;
+  }
+
+  .listFilterLabel {
+    font-size: 12px;
+  }
+
+  .eventDetailReviewItem {
+    padding: 10px 0;
+  }
+
+  .eventDetailReviewItemHead {
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .eventDetailReviewsList {
+    gap: 10px;
   }
 }

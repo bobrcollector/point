@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models import User
@@ -65,6 +66,8 @@ _LOCAL_ADMIN_HOSTS = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
 
 
 async def require_admin_local(request: Request, user: User = Depends(require_admin)) -> User:
+    if settings.admin_allow_remote:
+        return user
     client_host = (request.client.host if request.client else "").lower()
     if client_host not in _LOCAL_ADMIN_HOSTS:
         raise HTTPException(

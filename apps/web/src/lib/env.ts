@@ -74,6 +74,14 @@ function resolveDefaultApiBaseUrl(): string {
 
   }
 
+  // Production за reverse proxy (nginx): пустой VITE_API_BASE_URL → тот же origin (/api).
+  const configuredBase = import.meta.env.VITE_API_BASE_URL
+  if (!import.meta.env.DEV && (typeof configuredBase !== 'string' || configuredBase.trim() === '')) {
+
+    return ''
+
+  }
+
   return 'http://localhost:8000'
 
 }

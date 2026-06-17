@@ -34,6 +34,18 @@ function readLanCert(): { cert: Buffer; key: Buffer } | null {
 
 
 
+/** Vite 8: https — только объект сертификата; без .lan-cert HTTPS даёт @vitejs/plugin-basic-ssl. */
+
+function resolveDevHttps(useLanHttps: boolean, lanCert: { cert: Buffer; key: Buffer } | null) {
+
+  if (!useLanHttps || !lanCert) return undefined
+
+  return lanCert
+
+}
+
+
+
 // https://vite.dev/config/
 
 export default defineConfig(({ mode }) => {
@@ -66,7 +78,7 @@ export default defineConfig(({ mode }) => {
 
       allowedHosts: true,
 
-      https: useLanHttps ? (lanCert ?? true) : undefined,
+      https: resolveDevHttps(useLanHttps, lanCert),
 
       proxy: {
 
@@ -102,7 +114,7 @@ export default defineConfig(({ mode }) => {
 
       allowedHosts: true,
 
-      https: useLanHttps ? (lanCert ?? true) : undefined,
+      https: resolveDevHttps(useLanHttps, lanCert),
 
       proxy: {
 

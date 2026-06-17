@@ -521,6 +521,7 @@ function AdminUsersRoute() {
   const usersQ = useAdminUsers()
   const mut = useAdminMutations()
   if (usersQ.isPending) return <p className="pageSub">Загрузка…</p>
+  if (usersQ.isError) return <p className="authError">{formatApiError(usersQ.error)}</p>
   if (!usersQ.data) return null
   return <UsersTab users={usersQ.data} mut={mut} />
 }
@@ -529,6 +530,7 @@ function AdminPendingRoute() {
   const pendingQ = useAdminPendingEvents()
   const mut = useAdminMutations()
   if (pendingQ.isPending) return <p className="pageSub">Загрузка…</p>
+  if (pendingQ.isError) return <p className="authError">{formatApiError(pendingQ.error)}</p>
   if (!pendingQ.data) return null
   return <PendingTab events={pendingQ.data} mut={mut} />
 }
@@ -537,6 +539,7 @@ function AdminComplaintsRoute() {
   const complaintsQ = useAdminComplaints()
   const mut = useAdminMutations()
   if (complaintsQ.isPending) return <p className="pageSub">Загрузка…</p>
+  if (complaintsQ.isError) return <p className="authError">{formatApiError(complaintsQ.error)}</p>
   if (!complaintsQ.data) return null
   return <ComplaintsTab items={complaintsQ.data} mut={mut} />
 }

@@ -4,7 +4,7 @@
 CHART_USERS_PER_DAY: list[int] = [2, 4, 1, 5, 3, 6, 4]
 
 # Жалобы по дням (от 6 дней назад до сегодня).
-CHART_COMPLAINTS_PER_DAY: list[int] = [0, 1, 0, 2, 1, 2, 1]
+CHART_COMPLAINTS_PER_DAY: list[int] = [1, 2, 1, 3, 2, 3, 2]
 
 CHART_EVENT_ID_MIN = 101
 CHART_EVENT_ID_MAX = 142
