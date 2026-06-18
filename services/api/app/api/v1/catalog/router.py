@@ -240,6 +240,8 @@ async def get_event_detail(
         ev = await catalog_service.get_event_for_participant(session, event_id, user.id)
     if ev is None:
         raise HTTPException(status_code=404, detail="Событие не найдено")
+    if ev.status == "approved" and not ev.is_hidden:
+        await catalog_service.record_event_view(session, ev.id, user.id if user else None)
     return EventDetail.model_validate(catalog_service.event_to_detail_dict(ev))
 
 

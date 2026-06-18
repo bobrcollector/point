@@ -1,22 +1,29 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useMemo, useState, type ReactElement, type ReactNode } from 'react'
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from '../components/RequireAuth'
 import {
   useAdminComplaints,
   useAdminComplaintsChart,
+  useAdminConversionChart,
   useAdminEventsChart,
+  useAdminLowRatedEventsChart,
   useAdminMetrics,
   useAdminMutations,
+  useAdminParticipationsChart,
+  useAdminParticipationsPerEventChart,
   useAdminPendingEvents,
   useAdminRatingChart,
+  useAdminRepeatParticipantsChart,
+  useAdminReviewLeaveChart,
   useAdminUsers,
   useAdminUsersChart,
+  useAdminUsersTotalChart,
   type AdminComplaint,
   type AdminEvent,
   type AdminUser,
 } from '../features/admin/queries'
 import { canModerate } from '../features/auth/types'
-import { isAdminHostAllowed } from '../lib/adminAccess'
+import { isAdminHostAllowed, useAdminAccessAllowed } from '../lib/adminAccess'
 import { ComplaintReviewDialog } from '../features/admin/ComplaintReviewDialog'
 import { complaintStatusLabel, parseComplaintReason } from '../features/admin/formatComplaint'
 import { formatApiError } from '../lib/apiError'
@@ -32,29 +39,121 @@ function formatDt(iso: string) {
   })
 }
 
-const CHART_PAD_TOP = 8
-const MAX_Y_TICKS = 16
+const CHART_PAD_TOP = 12
+const TARGET_Y_TICKS = 5
+const LABEL_FLIP_TOP_THRESHOLD = 16
+const LABEL_FLIP_BOTTOM_THRESHOLD = 88
 
-type ChartScale = { yMin: number; yMax: number; ticks: number[] }
+function shouldShowChartAxisLabel(index: number, total: number): boolean {
+  if (total <= 7) return true
+  if (index === 0 || index === total - 1) return true
+  return index % 5 === 0
+}
+
+type ChartScale = { yMin: number; yMax: number; ticks: number[]; decimal: boolean }
+
+function niceStep(range: number, targetTicks = TARGET_Y_TICKS): number {
+  if (range <= 0) return 1
+  const rough = range / targetTicks
+  const magnitude = 10 ** Math.floor(Math.log10(rough))
+  const normalized = rough / magnitude
+  let nice = 1
+  if (normalized > 5) nice = 10
+  else if (normalized > 2) nice = 5
+  else if (normalized > 1) nice = 2
+  return nice * magnitude
+}
+
+function buildTicks(yMin: number, yMax: number, step: number, decimal: boolean): number[] {
+  const ticks: number[] = []
+  for (let v = yMax; v >= yMin - step / 2; v -= step) {
+    const rounded = decimal ? Math.round(v * 10) / 10 : Math.round(v)
+    if (ticks.length === 0 || ticks[ticks.length - 1] !== rounded) ticks.push(rounded)
+  }
+  if (!decimal && !ticks.includes(0) && yMin <= 0) ticks.push(0)
+  return [...new Set(ticks)].sort((a, b) => b - a)
+}
 
 function computeChartScale(values: number[]): ChartScale {
-  if (values.length === 0) return { yMin: 0, yMax: 1, ticks: [1, 0] }
+  if (values.length === 0) return { yMin: 0, yMax: 1, ticks: [1, 0], decimal: false }
 
-  const rawMax = Math.max(...values)
-  if (rawMax === 0) return { yMin: 0, yMax: 1, ticks: [1, 0] }
+  const dataMax = Math.max(...values)
+  if (dataMax === 0) return { yMin: 0, yMax: 1, ticks: [1, 0], decimal: false }
 
   const yMin = 0
-  const yMax = rawMax
+  const paddedMax = dataMax * 1.12 + (dataMax < 5 ? 0.5 : 0)
+  const step = niceStep(paddedMax - yMin)
+  const yMax = Math.max(step, Math.ceil(paddedMax / step) * step)
 
-  if (yMax - yMin + 1 <= MAX_Y_TICKS) {
-    const ticks: number[] = []
-    for (let v = yMax; v >= yMin; v -= 1) ticks.push(v)
-    return { yMin, yMax, ticks }
+  return { yMin, yMax, ticks: buildTicks(yMin, yMax, step, false), decimal: false }
+}
+
+function computeRatingChartScale(values: number[]): ChartScale {
+  if (values.length === 0) return { yMin: 1, yMax: 5, ticks: [5, 4, 3, 2, 1], decimal: true }
+
+  const dataMin = Math.min(...values)
+  const dataMax = Math.max(...values)
+  const span = Math.max(0.5, dataMax - dataMin)
+  const paddedMin = Math.max(1, dataMin - span * 0.15)
+  const paddedMax = Math.min(5, dataMax + span * 0.15)
+  const range = Math.max(0.5, paddedMax - paddedMin)
+  const step = range <= 1 ? 0.2 : range <= 2 ? 0.5 : 1
+  const yMin = Math.max(1, Math.floor(paddedMin / step) * step)
+  const yMax = Math.min(5, Math.ceil(paddedMax / step) * step)
+
+  return { yMin, yMax, ticks: buildTicks(yMin, yMax || step, step, true), decimal: true }
+}
+
+function computeDecimalChartScale(values: number[]): ChartScale {
+  if (values.length === 0) {
+    return { yMin: 0, yMax: 0.5, ticks: [0.5, 0], decimal: true }
   }
 
-  const dataTicks = [...new Set(values)].sort((a, b) => b - a)
-  if (!dataTicks.includes(0)) dataTicks.push(0)
-  return { yMin, yMax, ticks: [...new Set(dataTicks)].sort((a, b) => b - a) }
+  const dataMax = Math.max(...values)
+  if (dataMax === 0) {
+    return { yMin: 0, yMax: 0.5, ticks: [0.5, 0], decimal: true }
+  }
+
+  const yMin = 0
+  const pad =
+    dataMax <= 0.1 ? Math.max(0.05, dataMax * 0.5) : dataMax < 1 ? Math.max(0.1, dataMax * 0.2) : dataMax * 0.12
+  const paddedMax = dataMax + pad
+  const step =
+    dataMax <= 0.1 ? 0.05 : dataMax <= 0.5 ? 0.1 : dataMax <= 2 ? 0.2 : niceStep(paddedMax - yMin)
+  const yMax = Math.max(step, Math.ceil(paddedMax / step) * step)
+
+  return { yMin, yMax, ticks: buildTicks(yMin, yMax, step, true), decimal: true }
+}
+
+function computePercentChartScale(values: number[]): ChartScale {
+  if (values.length === 0) return { yMin: 0, yMax: 100, ticks: [100, 75, 50, 25, 0], decimal: true }
+
+  const dataMax = Math.max(...values)
+  const dataMin = Math.min(...values)
+  if (dataMax === dataMin) {
+    const pad = Math.max(5, dataMax * 0.2)
+    const yMin = Math.max(0, dataMin - pad)
+    const yMax = Math.min(100, dataMax + pad)
+    const step = niceStep(yMax - yMin)
+    return { yMin, yMax, ticks: buildTicks(yMin, yMax, step, true), decimal: true }
+  }
+
+  const yMin = Math.max(0, dataMin - (dataMax - dataMin) * 0.15)
+  const paddedMax = Math.min(100, dataMax + (dataMax - dataMin) * 0.15 + 1)
+  const step = niceStep(paddedMax - yMin)
+  const yMax = Math.min(100, Math.ceil(paddedMax / step) * step)
+
+  return { yMin, yMax, ticks: buildTicks(yMin, yMax, step, true), decimal: true }
+}
+
+function formatChartTick(value: number, decimal: boolean): string {
+  if (!decimal) return String(Math.round(value))
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
+function formatChartValue(value: number, decimal: boolean): string {
+  if (!decimal) return String(Math.round(value))
+  return value.toFixed(1)
 }
 
 function valueToTopPercent(value: number, scale: ChartScale): number {
@@ -62,6 +161,29 @@ function valueToTopPercent(value: number, scale: ChartScale): number {
   const range = scale.yMax - scale.yMin || 1
   const ratio = (value - scale.yMin) / range
   return CHART_PAD_TOP + (1 - ratio) * plotSpan
+}
+
+function previousChartValue(values: (number | null)[], index: number): number | null {
+  for (let j = index - 1; j >= 0; j -= 1) {
+    const value = values[j]
+    if (value != null) return value
+  }
+  return null
+}
+
+function shouldLabelPointBelow(values: (number | null)[], index: number, yPercent: number): boolean {
+  const current = values[index]
+  if (current == null) return false
+
+  const previous = previousChartValue(values, index)
+  if (previous != null) {
+    if (current < previous) return true
+    if (current > previous) return false
+  }
+
+  if (yPercent < LABEL_FLIP_TOP_THRESHOLD) return true
+  if (yPercent > LABEL_FLIP_BOTTOM_THRESHOLD) return false
+  return false
 }
 
 type ChartPoint = { label: string; count: number; x: number; y: number }
@@ -76,14 +198,17 @@ function buildLinePoints(data: { label: string; count: number }[], scale: ChartS
   })
 }
 
-function LineChart({ data }: { data: { label: string; count: number }[] }) {
+function LineChart({ data, title }: { data: { label: string; count: number }[]; title?: string }) {
   const scale = useMemo(() => computeChartScale(data.map((p) => p.count)), [data])
   const points = useMemo(() => buildLinePoints(data, scale), [data, scale])
+  const values = useMemo(() => data.map((p) => p.count), [data])
   const linePoints = points.map((p) => `${p.x},${p.y}`).join(' ')
-  const yAxisWidth = `${Math.max(...scale.ticks.map((t) => String(t).length), 1) + 0.5}ch`
+  const yAxisWidth = `${Math.max(...scale.ticks.map((t) => formatChartTick(t, scale.decimal).length), 1) + 0.5}ch`
+  const compactValues = points.length > 14
 
   return (
     <div className="adminChartWrap">
+      {title ? <h4 className="adminStatChartTitle">{title}</h4> : null}
       <div className="adminChartYAxis" style={{ width: yAxisWidth }} aria-hidden>
         {scale.ticks.map((tick) => (
           <span
@@ -91,7 +216,7 @@ function LineChart({ data }: { data: { label: string; count: number }[] }) {
             className="adminChartYTick"
             style={{ top: `${valueToTopPercent(tick, scale)}%` }}
           >
-            {tick}
+            {formatChartTick(tick, scale.decimal)}
           </span>
         ))}
       </div>
@@ -106,26 +231,31 @@ function LineChart({ data }: { data: { label: string; count: number }[] }) {
                 style={{ top: `${valueToTopPercent(tick, scale)}%` }}
               />
             ))}
-            {points.map((p) => (
-              <div key={`v-${p.label}`} className="adminChartGridLineV" style={{ left: `${p.x}%` }} />
-            ))}
           </div>
 
           <svg className="adminLineChartSvg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
             <polyline className="adminLineChartPath" points={linePoints} />
           </svg>
 
-          <div className="adminLineChartMarkers" aria-hidden>
-            {points.map((p) => (
-              <div
-                key={p.label}
-                className="adminLineChartMarker"
-                style={{ left: `${p.x}%`, top: `${p.y}%` }}
-              >
-                <span className="adminLineChartDot" />
-                <span className="adminChartValue">{p.count}</span>
-              </div>
-            ))}
+          <div
+            className={`adminLineChartMarkers${compactValues ? ' adminLineChartMarkersCompact' : ''}`}
+            aria-hidden
+          >
+            {points.map((p, i) => {
+              const below = shouldLabelPointBelow(values, i, p.y)
+              return (
+                <div
+                  key={`${p.label}-${i}`}
+                  className="adminLineChartMarker"
+                  style={{ left: `${p.x}%`, top: `${p.y}%` }}
+                >
+                  <span className="adminLineChartDot" />
+                  <span className={`adminChartValue${below ? ' adminChartValueBelow' : ''}`}>
+                    {formatChartValue(p.count, scale.decimal)}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -134,10 +264,12 @@ function LineChart({ data }: { data: { label: string; count: number }[] }) {
           style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}
           aria-hidden
         >
-          {points.map((p) => (
-            <div key={p.label} className="adminChartXSlot">
+          {points.map((p, i) => (
+            <div key={`${p.label}-${i}`} className="adminChartXSlot">
               <span className="adminChartXTick" />
-              <span className="adminChartLabel">{p.label}</span>
+              <span className="adminChartLabel">
+                {shouldShowChartAxisLabel(i, points.length) ? p.label : ''}
+              </span>
             </div>
           ))}
         </div>
@@ -146,35 +278,59 @@ function LineChart({ data }: { data: { label: string; count: number }[] }) {
   )
 }
 
-const RATING_Y_MIN = 1
-const RATING_Y_MAX = 5
-const RATING_TICKS = [5, 4, 3, 2, 1]
-
 type RatingChartPoint = { label: string; value: number | null; x: number; y: number | null }
 
-function buildRatingPoints(data: { label: string; value: number | null }[]): RatingChartPoint[] {
+function buildRatingPoints(
+  data: { label: string; value: number | null }[],
+  scale: ChartScale,
+): RatingChartPoint[] {
   const n = data.length
-  const plotSpan = 100 - CHART_PAD_TOP
-  const range = RATING_Y_MAX - RATING_Y_MIN || 1
 
   return data.map((p, i) => {
     const x = n <= 1 ? 50 : ((i + 0.5) / n) * 100
     if (p.value == null) return { ...p, x, y: null }
-    const ratio = (p.value - RATING_Y_MIN) / range
-    const y = CHART_PAD_TOP + (1 - ratio) * plotSpan
+    const y = valueToTopPercent(p.value, scale)
     return { ...p, x, y }
   })
 }
 
-function ratingToTopPercent(value: number): number {
-  const plotSpan = 100 - CHART_PAD_TOP
-  const range = RATING_Y_MAX - RATING_Y_MIN || 1
-  const ratio = (value - RATING_Y_MIN) / range
-  return CHART_PAD_TOP + (1 - ratio) * plotSpan
+function RatingLineChart({ data, title }: { data: { label: string; value: number | null }[]; title?: string }) {
+  return <ValueLineChart data={data} title={title} computeScale={computeRatingChartScale} />
 }
 
-function RatingLineChart({ data }: { data: { label: string; value: number | null }[] }) {
-  const points = useMemo(() => buildRatingPoints(data), [data])
+function PercentLineChart({ data, title }: { data: { label: string; value: number | null }[]; title?: string }) {
+  return (
+    <ValueLineChart
+      data={data}
+      title={title}
+      computeScale={computePercentChartScale}
+      formatValue={(value) => `${formatChartValue(value, true)}%`}
+    />
+  )
+}
+
+function DecimalLineChart({ data, title }: { data: { label: string; value: number | null }[]; title?: string }) {
+  return <ValueLineChart data={data} title={title} computeScale={computeDecimalChartScale} />
+}
+
+function ValueLineChart({
+  data,
+  title,
+  computeScale,
+  formatValue,
+}: {
+  data: { label: string; value: number | null }[]
+  title?: string
+  computeScale: (values: number[]) => ChartScale
+  formatValue?: (value: number) => string
+}) {
+  const numericValues = useMemo(
+    () => data.map((p) => p.value).filter((v): v is number => v != null),
+    [data],
+  )
+  const scale = useMemo(() => computeScale(numericValues), [computeScale, numericValues])
+  const points = useMemo(() => buildRatingPoints(data, scale), [data, scale])
+  const values = useMemo(() => data.map((p) => p.value), [data])
   const lineSegments = useMemo(() => {
     const segments: string[] = []
     let current: RatingChartPoint[] = []
@@ -191,13 +347,17 @@ function RatingLineChart({ data }: { data: { label: string; value: number | null
     if (current.length) segments.push(current.map((pt) => `${pt.x},${pt.y}`).join(' '))
     return segments
   }, [points])
+  const yAxisWidth = `${Math.max(...scale.ticks.map((t) => formatChartTick(t, scale.decimal).length), 1) + 0.5}ch`
+  const compactValues = points.length > 14
+  const renderValue = formatValue ?? ((value: number) => formatChartValue(value, scale.decimal))
 
   return (
     <div className="adminChartWrap">
-      <div className="adminChartYAxis" style={{ width: '3ch' }} aria-hidden>
-        {RATING_TICKS.map((tick) => (
-          <span key={tick} className="adminChartYTick" style={{ top: `${ratingToTopPercent(tick)}%` }}>
-            {tick}
+      {title ? <h4 className="adminStatChartTitle">{title}</h4> : null}
+      <div className="adminChartYAxis" style={{ width: yAxisWidth }} aria-hidden>
+        {scale.ticks.map((tick) => (
+          <span key={tick} className="adminChartYTick" style={{ top: `${valueToTopPercent(tick, scale)}%` }}>
+            {formatChartTick(tick, scale.decimal)}
           </span>
         ))}
       </div>
@@ -205,15 +365,12 @@ function RatingLineChart({ data }: { data: { label: string; value: number | null
       <div className="adminChartMain">
         <div className="adminChartPlot">
           <div className="adminChartGrid" aria-hidden>
-            {RATING_TICKS.map((tick) => (
+            {scale.ticks.map((tick) => (
               <div
                 key={tick}
                 className="adminChartGridLine"
-                style={{ top: `${ratingToTopPercent(tick)}%` }}
+                style={{ top: `${valueToTopPercent(tick, scale)}%` }}
               />
-            ))}
-            {points.map((p) => (
-              <div key={`v-${p.label}`} className="adminChartGridLineV" style={{ left: `${p.x}%` }} />
             ))}
           </div>
 
@@ -223,19 +380,26 @@ function RatingLineChart({ data }: { data: { label: string; value: number | null
             ))}
           </svg>
 
-          <div className="adminLineChartMarkers" aria-hidden>
-            {points.map((p) =>
-              p.y == null || p.value == null ? null : (
+          <div
+            className={`adminLineChartMarkers${compactValues ? ' adminLineChartMarkersCompact' : ''}`}
+            aria-hidden
+          >
+            {points.map((p, i) => {
+              if (p.y == null || p.value == null) return null
+              const below = shouldLabelPointBelow(values, i, p.y)
+              return (
                 <div
-                  key={p.label}
+                  key={`${p.label}-${i}`}
                   className="adminLineChartMarker"
                   style={{ left: `${p.x}%`, top: `${p.y}%` }}
                 >
                   <span className="adminLineChartDot" />
-                  <span className="adminChartValue">{p.value.toFixed(1)}</span>
+                  <span className={`adminChartValue${below ? ' adminChartValueBelow' : ''}`}>
+                    {renderValue(p.value)}
+                  </span>
                 </div>
-              ),
-            )}
+              )
+            })}
           </div>
         </div>
 
@@ -244,10 +408,12 @@ function RatingLineChart({ data }: { data: { label: string; value: number | null
           style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}
           aria-hidden
         >
-          {points.map((p) => (
-            <div key={p.label} className="adminChartXSlot">
+          {points.map((p, i) => (
+            <div key={`${p.label}-${i}`} className="adminChartXSlot">
               <span className="adminChartXTick" />
-              <span className="adminChartLabel">{p.label}</span>
+              <span className="adminChartLabel">
+                {shouldShowChartAxisLabel(i, points.length) ? p.label : ''}
+              </span>
             </div>
           ))}
         </div>
@@ -256,7 +422,30 @@ function RatingLineChart({ data }: { data: { label: string; value: number | null
   )
 }
 
+function ChartQueryBody<T>({
+  query,
+  title,
+  children,
+}: {
+  query: { isLoading: boolean; isError: boolean; error: unknown; data?: T }
+  title: string
+  children: (data: T) => ReactNode
+}) {
+  if (query.isLoading) return <p className="pageSub">Загрузка графика…</p>
+  if (query.isError) {
+    return <p className="authError">{formatApiError(query.error, 'Не удалось загрузить график')}</p>
+  }
+  if (!query.data) return null
+  const chart = children(query.data)
+  if (!isValidElement(chart)) return chart
+  return cloneElement(chart as ReactElement<{ title?: string }>, { title })
+}
+
 function formatRating(value: number | null | undefined) {
+  return value != null ? value.toFixed(1) : '—'
+}
+
+function formatDecimal(value: number | null | undefined) {
   return value != null ? value.toFixed(1) : '—'
 }
 
@@ -297,18 +486,330 @@ function StatSection({
   )
 }
 
+function EventsDashboardSection({
+  metrics,
+  eventsChartQ,
+  participationsChartQ,
+  conversionChartQ,
+  participationsPerEventChartQ,
+}: {
+  metrics: ReturnType<typeof useAdminMetrics>['data']
+  eventsChartQ: ReturnType<typeof useAdminEventsChart>
+  participationsChartQ: ReturnType<typeof useAdminParticipationsChart>
+  conversionChartQ: ReturnType<typeof useAdminConversionChart>
+  participationsPerEventChartQ: ReturnType<typeof useAdminParticipationsPerEventChart>
+}) {
+  const [chartMode, setChartMode] = useState<
+    'events' | 'participations' | 'conversion' | 'perEvent'
+  >('events')
+
+  const chartConfig = {
+    events: {
+      query: eventsChartQ,
+      title: 'Новые события (за месяц)',
+      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
+    },
+    participations: {
+      query: participationsChartQ,
+      title: 'Регистрации на мероприятия (за месяц)',
+      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
+    },
+    conversion: {
+      query: conversionChartQ,
+      title: 'Конверсия просмотр → участие (за месяц)',
+      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
+    },
+    perEvent: {
+      query: participationsPerEventChartQ,
+      title: 'Участий на активное событие (за месяц)',
+      render: (data: { label: string; value: number | null }[]) => <DecimalLineChart data={data} />,
+    },
+  } as const
+
+  const active = chartConfig[chartMode]
+
+  return (
+    <StatSection
+      title="Мероприятия"
+      metrics={
+        <>
+          <MetricTile value={metrics?.upcoming_events ?? '—'} label="Активные события" />
+          <MetricTile
+            value={formatPercent(metrics?.view_to_participation_percent)}
+            label="Конверсия просмотр → участие"
+          />
+          <MetricTile
+            value={formatDecimal(metrics?.participations_per_active_event)}
+            label="Участий на активное событие"
+          />
+          <MetricTile value={metrics?.events_created_today ?? '—'} label="Созданные сегодня" />
+          <MetricTile
+            value={metrics?.participations_today ?? '—'}
+            label="Регистрации на мероприятия сегодня"
+          />
+        </>
+      }
+      chart={
+        <>
+          <div className="adminStatChartHead">
+            <div className="adminFilters">
+              <button
+                type="button"
+                className={chartMode === 'events' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('events')}
+              >
+                Новые события
+              </button>
+              <button
+                type="button"
+                className={chartMode === 'participations' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('participations')}
+              >
+                Регистрации
+              </button>
+              <button
+                type="button"
+                className={chartMode === 'conversion' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('conversion')}
+              >
+                Конверсия
+              </button>
+              <button
+                type="button"
+                className={chartMode === 'perEvent' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('perEvent')}
+              >
+                Участий / событие
+              </button>
+            </div>
+          </div>
+          <ChartQueryBody query={active.query} title={active.title}>
+            {active.render}
+          </ChartQueryBody>
+        </>
+      }
+    />
+  )
+}
+
+function UsersDashboardSection({
+  metrics,
+  usersChartQ,
+  usersTotalChartQ,
+  repeatParticipantsChartQ,
+}: {
+  metrics: ReturnType<typeof useAdminMetrics>['data']
+  usersChartQ: ReturnType<typeof useAdminUsersChart>
+  usersTotalChartQ: ReturnType<typeof useAdminUsersTotalChart>
+  repeatParticipantsChartQ: ReturnType<typeof useAdminRepeatParticipantsChart>
+}) {
+  const [chartMode, setChartMode] = useState<'registrations' | 'total' | 'repeat'>('registrations')
+
+  const chartConfig = {
+    registrations: {
+      query: usersChartQ,
+      title: 'Регистрации (за месяц)',
+      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
+    },
+    total: {
+      query: usersTotalChartQ,
+      title: 'Всего пользователей (за месяц)',
+      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
+    },
+    repeat: {
+      query: repeatParticipantsChartQ,
+      title: 'Повторные участники (за месяц)',
+      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
+    },
+  } as const
+
+  const active = chartConfig[chartMode]
+
+  return (
+    <StatSection
+      title="Пользователи"
+      metrics={
+        <>
+          <MetricTile value={metrics?.total_users ?? '—'} label="Всего пользователей" />
+          <MetricTile value={metrics?.users_registered_today ?? '—'} label="Зарегистрировались сегодня" />
+          <MetricTile
+            value={formatPercent(metrics?.repeat_participants_percent)}
+            label="Повторные участники"
+          />
+        </>
+      }
+      chart={
+        <>
+          <div className="adminStatChartHead">
+            <div className="adminFilters">
+              <button
+                type="button"
+                className={chartMode === 'registrations' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('registrations')}
+              >
+                Регистрации
+              </button>
+              <button
+                type="button"
+                className={chartMode === 'total' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('total')}
+              >
+                Всего пользователей
+              </button>
+              <button
+                type="button"
+                className={chartMode === 'repeat' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('repeat')}
+              >
+                Повторные участники
+              </button>
+            </div>
+          </div>
+          <ChartQueryBody query={active.query} title={active.title}>
+            {active.render}
+          </ChartQueryBody>
+        </>
+      }
+    />
+  )
+}
+
+function ComplaintsDashboardSection({
+  metrics,
+  complaintsChartQ,
+}: {
+  metrics: ReturnType<typeof useAdminMetrics>['data']
+  complaintsChartQ: ReturnType<typeof useAdminComplaintsChart>
+}) {
+  return (
+    <StatSection
+      title="Жалобы"
+      metrics={
+        <>
+          <MetricTile
+            value={metrics?.new_complaints ?? '—'}
+            label="Новые жалобы"
+            warn={(metrics?.new_complaints ?? 0) > 0}
+          />
+          <MetricTile value={metrics?.complaints_today ?? '—'} label="Поступило сегодня" />
+        </>
+      }
+      chart={
+        <ChartQueryBody query={complaintsChartQ} title="Жалобы (за месяц)">
+          {(data) => <LineChart data={data} />}
+        </ChartQueryBody>
+      }
+    />
+  )
+}
+
+function formatPercent(value: number | null | undefined) {
+  return value != null ? `${value.toFixed(1)}%` : '—'
+}
+
+function ReviewsDashboardSection({
+  metrics,
+  ratingChartQ,
+  lowRatedChartQ,
+  reviewLeaveChartQ,
+}: {
+  metrics: ReturnType<typeof useAdminMetrics>['data']
+  ratingChartQ: ReturnType<typeof useAdminRatingChart>
+  lowRatedChartQ: ReturnType<typeof useAdminLowRatedEventsChart>
+  reviewLeaveChartQ: ReturnType<typeof useAdminReviewLeaveChart>
+}) {
+  const [chartMode, setChartMode] = useState<'rating' | 'lowRated' | 'reviewLeave'>('rating')
+
+  const chartConfig = {
+    rating: {
+      query: ratingChartQ,
+      title: 'Средний рейтинг (за месяц)',
+      render: (data: { label: string; value: number | null }[]) => <RatingLineChart data={data} />,
+    },
+    lowRated: {
+      query: lowRatedChartQ,
+      title: 'События с рейтингом < 3 (за месяц)',
+      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
+    },
+    reviewLeave: {
+      query: reviewLeaveChartQ,
+      title: 'Процент оставления отзыва (за месяц)',
+      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
+    },
+  } as const
+
+  const active = chartConfig[chartMode]
+
+  return (
+    <StatSection
+      title="Отзывы"
+      metrics={
+        <>
+          <MetricTile value={formatRating(metrics?.avg_review_rating)} label="Средний рейтинг" />
+          <MetricTile value={formatPercent(metrics?.review_leave_percent)} label="Процент оставления отзыва" />
+          <MetricTile
+            value={formatPercent(metrics?.low_rated_events_percent)}
+            label="События с рейтингом < 3"
+          />
+        </>
+      }
+      chart={
+        <>
+          <div className="adminStatChartHead">
+            <div className="adminFilters">
+              <button
+                type="button"
+                className={chartMode === 'rating' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('rating')}
+              >
+                Средний рейтинг
+              </button>
+              <button
+                type="button"
+                className={chartMode === 'lowRated' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('lowRated')}
+              >
+                Рейтинг &lt; 3
+              </button>
+              <button
+                type="button"
+                className={chartMode === 'reviewLeave' ? 'pill active' : 'pill'}
+                onClick={() => setChartMode('reviewLeave')}
+              >
+                Оставление отзыва
+              </button>
+            </div>
+          </div>
+          <ChartQueryBody query={active.query} title={active.title}>
+            {active.render}
+          </ChartQueryBody>
+        </>
+      }
+    />
+  )
+}
+
 function DashboardTab() {
   const metricsQ = useAdminMetrics()
   const usersChartQ = useAdminUsersChart()
+  const usersTotalChartQ = useAdminUsersTotalChart()
+  const repeatParticipantsChartQ = useAdminRepeatParticipantsChart()
   const eventsChartQ = useAdminEventsChart()
+  const participationsChartQ = useAdminParticipationsChart()
+  const conversionChartQ = useAdminConversionChart()
+  const participationsPerEventChartQ = useAdminParticipationsPerEventChart()
   const complaintsChartQ = useAdminComplaintsChart()
   const ratingChartQ = useAdminRatingChart()
+  const lowRatedChartQ = useAdminLowRatedEventsChart()
+  const reviewLeaveChartQ = useAdminReviewLeaveChart()
   const m = metricsQ.data
 
   return (
     <div className="adminTabPanel">
       <h2 className="accountSectionTitle">Статистика</h2>
-      {metricsQ.isError ? <p className="authError">Не удалось загрузить метрики</p> : null}
+      {metricsQ.isError ? (
+        <p className="authError">{formatApiError(metricsQ.error, 'Не удалось загрузить метрики')}</p>
+      ) : null}
 
       <div className="adminDashboardSections">
         <StatSection
@@ -318,89 +819,41 @@ function DashboardTab() {
             <>
               <MetricTile
                 value={m?.pending_events ?? '—'}
-                label="На модерации"
+                label="Мероприятия на модерации"
                 warn={(m?.pending_events ?? 0) > 0}
               />
               <MetricTile
                 value={m?.new_complaints ?? '—'}
-                label="Новых жалоб"
+                label="Новые жалобы"
                 warn={(m?.new_complaints ?? 0) > 0}
               />
-              <MetricTile
-                value={m?.banned_users ?? '—'}
-                label="Заблокировано"
-                warn={(m?.banned_users ?? 0) > 0}
-              />
             </>
-          }
-          chart={
-            complaintsChartQ.data ? (
-              <>
-                <h4 className="adminStatChartTitle">Жалобы (7 дней)</h4>
-                <LineChart data={complaintsChartQ.data} />
-              </>
-            ) : (
-              <p className="pageSub">…</p>
-            )
           }
         />
 
-        <StatSection
-          title="Мероприятия"
-          metrics={
-            <>
-              <MetricTile value={m?.total_events ?? '—'} label="Всего событий" />
-              <MetricTile value={m?.active_events_today ?? '—'} label="Сегодня" />
-              <MetricTile value={m?.upcoming_events ?? '—'} label="Предстоящих" />
-              <MetricTile value={m?.total_participations ?? '—'} label="Участий" />
-            </>
-          }
-          chart={
-            eventsChartQ.data ? (
-              <>
-                <h4 className="adminStatChartTitle">Новые события (7 дней)</h4>
-                <LineChart data={eventsChartQ.data} />
-              </>
-            ) : (
-              <p className="pageSub">…</p>
-            )
-          }
+        <EventsDashboardSection
+          metrics={m}
+          eventsChartQ={eventsChartQ}
+          participationsChartQ={participationsChartQ}
+          conversionChartQ={conversionChartQ}
+          participationsPerEventChartQ={participationsPerEventChartQ}
         />
 
-        <StatSection
-          title="Пользователи"
-          metrics={<MetricTile value={m?.total_users ?? '—'} label="Всего пользователей" />}
-          chart={
-            usersChartQ.data ? (
-              <>
-                <h4 className="adminStatChartTitle">Регистрации (7 дней)</h4>
-                <LineChart data={usersChartQ.data} />
-              </>
-            ) : (
-              <p className="pageSub">…</p>
-            )
-          }
+        <UsersDashboardSection
+          metrics={m}
+          usersChartQ={usersChartQ}
+          usersTotalChartQ={usersTotalChartQ}
+          repeatParticipantsChartQ={repeatParticipantsChartQ}
         />
 
-        <StatSection
-          title="Отзывы"
-          metrics={
-            <>
-              <MetricTile value={m?.total_reviews ?? '—'} label="Всего отзывов" />
-              <MetricTile value={formatRating(m?.avg_event_rating)} label="Средний рейтинг" />
-            </>
-          }
-          chart={
-            ratingChartQ.data ? (
-              <>
-                <h4 className="adminStatChartTitle">Средний рейтинг (7 дней)</h4>
-                <RatingLineChart data={ratingChartQ.data} />
-              </>
-            ) : (
-              <p className="pageSub">…</p>
-            )
-          }
+        <ReviewsDashboardSection
+          metrics={m}
+          ratingChartQ={ratingChartQ}
+          lowRatedChartQ={lowRatedChartQ}
+          reviewLeaveChartQ={reviewLeaveChartQ}
         />
+
+        <ComplaintsDashboardSection metrics={m} complaintsChartQ={complaintsChartQ} />
       </div>
     </div>
   )
@@ -693,8 +1146,20 @@ function AdminContent() {
 
 export function AdminPage() {
   const role = useAuthStore((s) => s.user?.role)
+  const adminAllowed = useAdminAccessAllowed()
   if (!isAdminHostAllowed()) {
     return <Navigate to="/" replace />
+  }
+  if (!adminAllowed) {
+    return (
+      <div className="page">
+        <h1 className="myEventsTitle">Админ-панель</h1>
+        <p className="pageSub">Админ-панель доступна только с компьютера в браузере на ПК.</p>
+        <Link to="/" className="homeGhostBtn">
+          На главную
+        </Link>
+      </div>
+    )
   }
   return (
     <RequireAuth roles={['admin']}>

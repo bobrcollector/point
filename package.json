@@ -24,6 +24,7 @@
     "db:migrate": "node scripts/ensure-api-env.mjs && node scripts/wait-db.mjs && node scripts/run-python.mjs -m alembic upgrade head",
     "setup:api": "node scripts/ensure-api-venv.mjs",
     "db:seed": "node scripts/run-python.mjs -m app.seed",
+    "db:seed:safe": "cross-env POINT_SEED_SAFE=1 node scripts/run-python.mjs -m app.seed",
     "db:reset": "docker compose -f infra/docker-compose.yml --env-file infra/.env down -v && node scripts/setup-db.mjs",
     "setup:db": "node scripts/setup-db.mjs",
     "generate:vapid": "node scripts/generate-vapid.mjs",

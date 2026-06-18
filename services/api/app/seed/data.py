@@ -1,15 +1,109 @@
 """Начальные категории и события (демо-данные для пустой БД)."""
 
-# Регистрации по дням (от 6 дней назад до сегодня) для графика в админке.
-CHART_USERS_PER_DAY: list[int] = [2, 4, 1, 5, 3, 6, 4]
+from __future__ import annotations
 
-# Жалобы по дням (от 6 дней назад до сегодня).
-CHART_COMPLAINTS_PER_DAY: list[int] = [1, 2, 1, 3, 2, 3, 2]
+from datetime import datetime, timedelta, timezone
+
+DASHBOARD_CHART_DAYS = 30
+
+
+def _realistic_series(weekly_pattern: list[int], days: int = DASHBOARD_CHART_DAYS) -> list[int]:
+    """Недельный паттерн + рост, выходные и небольшой детерминированный шум."""
+    now = datetime.now(timezone.utc)
+    out: list[int] = []
+    for i in range(days):
+        days_ago = (days - 1) - i
+        day = (now - timedelta(days=days_ago)).date()
+        dow = day.weekday()
+        base = weekly_pattern[i % len(weekly_pattern)]
+        weekend = 1.4 if dow in (4, 5, 6) else 1.0
+        growth = 1.0 + (i / max(days - 1, 1)) * 0.18
+        jitter = ((i * 17 + 11) % 9) - 4
+        out.append(max(0, round(base * weekend * growth + jitter)))
+    return out
+
+
+# Регистрации, жалобы, участия и отзывы по дням (от 29 дней назад до сегодня) для графиков в админке.
+CHART_USERS_PER_DAY: list[int] = _realistic_series([5, 8, 4, 11, 7, 13, 9])
+CHART_COMPLAINTS_PER_DAY: list[int] = _realistic_series([1, 2, 1, 3, 2, 4, 2])
+CHART_PARTICIPATIONS_PER_DAY: list[int] = _realistic_series([42, 55, 36, 68, 48, 74, 52])
+CHART_REVIEWS_PER_DAY: list[int] = _realistic_series([8, 12, 6, 14, 10, 16, 11])
+CHART_VIEWS_PER_DAY: list[int] = _realistic_series([180, 240, 150, 290, 210, 320, 195])
 
 CHART_EVENT_ID_MIN = 101
 CHART_EVENT_ID_MAX = 142
 
 DEMO_USER_EMAIL_DOMAIN = "point-demo.ru"
+
+ORGANIZER_SEEDS: list[dict[str, str]] = [
+    {"email": "maria.orlova@point-demo.ru", "display_name": "Мария Орлова", "org_name": "Orlova Events"},
+    {"email": "pavel.smirnov@point-demo.ru", "display_name": "Павел Смирнов", "org_name": "Театральная студия «Сцена»"},
+    {"email": "elena.volkova@point-demo.ru", "display_name": "Елена Волкова", "org_name": "Городские фестивали"},
+    {"email": "dmitry.kozlov@point-demo.ru", "display_name": "Дмитрий Козлов", "org_name": "SportHub Москва"},
+    {"email": "anna.ivanova@point-demo.ru", "display_name": "Анна Иванова", "org_name": "Культурный код СПб"},
+    {"email": "sergey.novikov@point-demo.ru", "display_name": "Сергей Новиков", "org_name": "Урал Event Group"},
+    {"email": "olga.morozova@point-demo.ru", "display_name": "Ольга Морозова", "org_name": "Creative Lab"},
+    {"email": "alexey.fedorov@point-demo.ru", "display_name": "Алексей Фёдоров", "org_name": "IT Community"},
+]
+
+DEMO_DISPLAY_NAMES: list[str] = [
+    "Анна Кузнецова",
+    "Иван Петров",
+    "Мария Соколова",
+    "Алексей Волков",
+    "Елена Морозова",
+    "Дмитрий Козлов",
+    "Ольга Новикова",
+    "Сергей Лебедев",
+    "Наталья Орлова",
+    "Андрей Смирнов",
+    "Татьяна Фёдорова",
+    "Михаил Иванов",
+    "Екатерина Попова",
+    "Владимир Сидоров",
+    "Юлия Михайлова",
+    "Николай Васильев",
+    "Светлана Кузнецова",
+    "Роман Алексеев",
+    "Ирина Николаева",
+    "Павел Захаров",
+    "Алина Белова",
+    "Кирилл Макаров",
+    "Виктория Степанова",
+    "Глеб Андреев",
+    "Полина Егорова",
+    "Максим Павлов",
+    "Дарья Романова",
+    "Артём Григорьев",
+    "Ксения Фомина",
+    "Борис Семёнов",
+    "Людмила Жукова",
+    "Станислав Овчинников",
+    "Вера Комарова",
+    "Игорь Баранов",
+    "Алёна Киселёва",
+    "Фёдор Титов",
+    "Марина Голубева",
+    "Олег Савельев",
+    "Лариса Медведева",
+    "Вадим Ершов",
+    "Галина Рыбакова",
+    "Тимофей Богданов",
+    "Надежда Калинина",
+    "Егор Антонов",
+    "Валерия Соболева",
+    "Константин Данилов",
+    "Жанна Осипова",
+    "Руслан Мельников",
+    "Элина Харитонова",
+    "Ярослав Куликов",
+]
+
+POPULAR_EVENT_IDS: list[int] = [
+    104, 112, 119, 120, 126, 131, 135, 117, 106, 108, 114, 121, 138, 102, 111,
+]
+
+LOW_RATED_EVENT_IDS: list[int] = [110, 115, 120, 125]
 
 CATEGORY_SEEDS: list[dict[str, int | str]] = [
     {"id": 1, "name": "Концерты"},

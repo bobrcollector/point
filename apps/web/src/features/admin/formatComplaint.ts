@@ -19,7 +19,7 @@ function stripDemoMarker(raw: string): string {
   const markerIdx = raw.indexOf('|')
   if (markerIdx === -1) return raw
   const prefix = raw.slice(0, markerIdx)
-  if (!prefix.startsWith('demo-complaint-')) return raw
+  if (!prefix.startsWith('demo-complaint-') && !prefix.startsWith('seed-complaint-')) return raw
   return raw.slice(markerIdx + 1).trim()
 }
 

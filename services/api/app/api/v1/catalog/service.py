@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.media import abs_media_url
-from app.models import Category, Event, EventParticipation
+from app.models import Category, Event, EventParticipation, EventView
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -251,3 +251,8 @@ async def get_event_for_participant(session: AsyncSession, event_id: int, user_i
         .options(selectinload(Event.categories), selectinload(Event.ticket_types))
     )
     return res.scalar_one_or_none()
+
+
+async def record_event_view(session: AsyncSession, event_id: int, user_id: int | None) -> None:
+    session.add(EventView(event_id=event_id, user_id=user_id))
+    await session.commit()

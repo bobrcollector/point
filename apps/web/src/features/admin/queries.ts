@@ -39,16 +39,27 @@ const ComplaintSchema = z.object({
 
 const MetricsSchema = z.object({
   total_users: z.number(),
+  users_registered_today: z.number(),
   total_events: z.number(),
   active_events_today: z.number(),
   active_events_today_or_future: z.number(),
   new_complaints: z.number(),
+  total_complaints: z.number(),
+  complaints_today: z.number(),
   pending_events: z.number(),
   banned_users: z.number(),
   upcoming_events: z.number(),
   total_participations: z.number(),
+  events_created_today: z.number(),
+  participations_today: z.number(),
   total_reviews: z.number(),
   avg_event_rating: z.number().nullable(),
+  avg_review_rating: z.number().nullable(),
+  review_leave_percent: z.number().nullable(),
+  view_to_participation_percent: z.number().nullable(),
+  participations_per_active_event: z.number().nullable(),
+  repeat_participants_percent: z.number().nullable(),
+  low_rated_events_percent: z.number().nullable(),
 })
 
 const ChartPointSchema = z.object({ label: z.string(), count: z.number() })
@@ -58,12 +69,23 @@ export type AdminUser = z.infer<typeof AdminUserSchema>
 export type AdminEvent = z.infer<typeof AdminEventSchema>
 export type AdminComplaint = z.infer<typeof ComplaintSchema>
 
+export type RatingChartPoint = z.infer<typeof RatingChartPointSchema>
+
+function parseMetrics(data: unknown) {
+  const parsed = MetricsSchema.safeParse(data)
+  if (!parsed.success) {
+    console.error('admin metrics schema', parsed.error.flatten())
+    throw new Error('Сервер вернул некорректные метрики')
+  }
+  return parsed.data
+}
+
 export function useAdminMetrics() {
   return useQuery({
     queryKey: ['admin', 'metrics'],
     queryFn: async () => {
       const res = await api.get('/api/v1/admin/dashboard/metrics')
-      return MetricsSchema.parse(res.data)
+      return parseMetrics(res.data)
     },
   })
 }
@@ -73,6 +95,16 @@ export function useAdminUsersChart() {
     queryKey: ['admin', 'users-chart'],
     queryFn: async () => {
       const res = await api.get('/api/v1/admin/dashboard/users-chart')
+      return z.array(ChartPointSchema).parse(res.data)
+    },
+  })
+}
+
+export function useAdminUsersTotalChart() {
+  return useQuery({
+    queryKey: ['admin', 'users-total-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/users-total-chart')
       return z.array(ChartPointSchema).parse(res.data)
     },
   })
@@ -88,6 +120,16 @@ export function useAdminEventsChart() {
   })
 }
 
+export function useAdminParticipationsChart() {
+  return useQuery({
+    queryKey: ['admin', 'participations-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/participations-chart')
+      return z.array(ChartPointSchema).parse(res.data)
+    },
+  })
+}
+
 export function useAdminComplaintsChart() {
   return useQuery({
     queryKey: ['admin', 'complaints-chart'],
@@ -98,11 +140,71 @@ export function useAdminComplaintsChart() {
   })
 }
 
+export function useAdminComplaintsTotalChart() {
+  return useQuery({
+    queryKey: ['admin', 'complaints-total-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/complaints-total-chart')
+      return z.array(ChartPointSchema).parse(res.data)
+    },
+  })
+}
+
 export function useAdminRatingChart() {
   return useQuery({
     queryKey: ['admin', 'rating-chart'],
     queryFn: async () => {
       const res = await api.get('/api/v1/admin/dashboard/rating-chart')
+      return z.array(RatingChartPointSchema).parse(res.data)
+    },
+  })
+}
+
+export function useAdminConversionChart() {
+  return useQuery({
+    queryKey: ['admin', 'conversion-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/conversion-chart')
+      return z.array(RatingChartPointSchema).parse(res.data)
+    },
+  })
+}
+
+export function useAdminParticipationsPerEventChart() {
+  return useQuery({
+    queryKey: ['admin', 'participations-per-event-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/participations-per-event-chart')
+      return z.array(RatingChartPointSchema).parse(res.data)
+    },
+  })
+}
+
+export function useAdminRepeatParticipantsChart() {
+  return useQuery({
+    queryKey: ['admin', 'repeat-participants-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/repeat-participants-chart')
+      return z.array(RatingChartPointSchema).parse(res.data)
+    },
+  })
+}
+
+export function useAdminLowRatedEventsChart() {
+  return useQuery({
+    queryKey: ['admin', 'low-rated-events-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/low-rated-events-chart')
+      return z.array(RatingChartPointSchema).parse(res.data)
+    },
+  })
+}
+
+export function useAdminReviewLeaveChart() {
+  return useQuery({
+    queryKey: ['admin', 'review-leave-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/review-leave-chart')
       return z.array(RatingChartPointSchema).parse(res.data)
     },
   })

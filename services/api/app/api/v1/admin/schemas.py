@@ -91,13 +91,24 @@ class RatingChartPoint(BaseModel):
 
 class DashboardMetrics(BaseModel):
     total_users: int
+    users_registered_today: int
     total_events: int
     active_events_today: int
     active_events_today_or_future: int
     new_complaints: int
+    total_complaints: int
+    complaints_today: int
     pending_events: int
     banned_users: int
     upcoming_events: int
     total_participations: int
+    events_created_today: int
+    participations_today: int
     total_reviews: int
     avg_event_rating: float | None = None
+    avg_review_rating: float | None = None
+    review_leave_percent: float | None = None
+    view_to_participation_percent: float | None = None
+    participations_per_active_event: float | None = None
+    repeat_participants_percent: float | None = None
+    low_rated_events_percent: float | None = None

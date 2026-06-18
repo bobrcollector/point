@@ -4579,6 +4579,7 @@ button.mapEventCardGhost {
 .adminStatSectionUrgent { border-color: color-mix(in srgb, #b91c1c 28%, var(--border)); background: color-mix(in srgb, #b91c1c 4%, var(--panel)); }
 .adminStatSectionTitle { margin: 0 0 16px; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
 .adminStatChart { margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border); }
+.adminStatChartHead { margin-bottom: 12px; }
 .adminStatChartTitle { margin: 0 0 12px; font-size: 14px; font-weight: 700; color: var(--muted); }
 .adminMetricsGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .adminStatSection .adminMetricTile { background: color-mix(in srgb, var(--bg) 55%, var(--panel)); }
@@ -4589,9 +4590,33 @@ button.mapEventCardGhost {
 .adminMetricLabel { font-size: 13px; color: var(--muted); margin-top: 4px; }
 .adminChartsRow { display: grid; grid-template-columns: 1fr; gap: 20px; }
 .adminCardTitle { margin: 0 0 16px; font-size: 16px; font-weight: 800; }
-.adminChartWrap { display: flex; align-items: flex-start; gap: 10px; padding-top: 6px; --admin-chart-plot-h: 220px; }
+.adminChartWrap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  --admin-chart-plot-h: 220px;
+}
+.adminChartWrap > .adminStatChartTitle {
+  grid-column: 2;
+  grid-row: 1;
+}
+.adminChartWrap > .adminChartYAxis {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+}
+.adminChartWrap > .adminChartMain {
+  grid-column: 2;
+  grid-row: 2;
+}
+.adminChartWrap:not(:has(> .adminStatChartTitle)) > .adminChartYAxis,
+.adminChartWrap:not(:has(> .adminStatChartTitle)) > .adminChartMain {
+  grid-row: 1;
+}
 .adminChartYAxis { position: relative; flex-shrink: 0; height: var(--admin-chart-plot-h); padding-right: 6px; }
 .adminChartYTick { position: absolute; right: 0; font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1; text-align: right; font-variant-numeric: tabular-nums; transform: translateY(-50%); }
+.adminChartYTick:first-child { transform: translateY(0); }
+.adminChartYTick:last-child:not(:first-child) { transform: translateY(-100%); }
 .adminChartMain { flex: 1; min-width: 0; }
 .adminChartPlot { position: relative; height: var(--admin-chart-plot-h); overflow: visible; border-left: 1px solid color-mix(in srgb, var(--muted) 55%, var(--border)); }
 .adminChartGrid { position: absolute; inset: 0; pointer-events: none; }
@@ -4603,6 +4628,9 @@ button.mapEventCardGhost {
 .adminLineChartMarker { position: absolute; width: 0; height: 0; }
 .adminLineChartDot { position: absolute; left: 0; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid var(--panel); box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent); transform: translate(-50%, -50%); }
 .adminLineChartMarker .adminChartValue { position: absolute; left: 0; top: 0; font-size: 12px; font-weight: 800; color: var(--text); line-height: 1; white-space: nowrap; transform: translate(-50%, calc(-100% - 8px)); }
+.adminChartValueBelow { transform: translate(-50%, 10px) !important; }
+.adminLineChartMarkersCompact .adminChartValue { font-size: 9px; font-weight: 700; }
+.adminLineChartMarkersCompact .adminLineChartDot { width: 7px; height: 7px; }
 .adminChartXAxis { display: grid; gap: 0; margin-top: 0; border-top: 1px solid color-mix(in srgb, var(--muted) 55%, var(--border)); }
 .adminChartXSlot { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 8px; min-width: 0; }
 .adminChartXTick { width: 1px; height: 10px; background: color-mix(in srgb, var(--muted) 55%, var(--border)); flex-shrink: 0; }

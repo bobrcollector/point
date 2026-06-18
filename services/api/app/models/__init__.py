@@ -2,7 +2,7 @@ from app.models.association import event_categories
 from app.models.category import Category
 from app.models.complaint import Complaint
 from app.models.event import Event
-from app.models.event_interaction import EventFavorite, EventParticipation, EventReview
+from app.models.event_interaction import EventFavorite, EventParticipation, EventReview, EventView
 from app.models.event_ticket import EventTicketType
 from app.models.notification import Notification
 from app.models.organizer_request import OrganizerRequest
@@ -17,6 +17,7 @@ __all__ = [
     "EventFavorite",
     "EventParticipation",
     "EventReview",
+    "EventView",
     "EventTicketType",
     "event_categories",
     "UserCategory",

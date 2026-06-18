@@ -7,6 +7,22 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.v1.admin.dashboard_charts import (
+    APPROVED_VISIBLE,
+    complaints_chart,
+    complaints_total_chart,
+    conversion_chart,
+    count_event_views,
+    events_chart,
+    low_rated_events_chart,
+    participations_chart,
+    participations_per_event_chart,
+    rating_chart,
+    repeat_participants_chart,
+    review_leave_chart,
+    users_chart,
+    users_total_chart,
+)
 from app.api.v1.admin.schemas import (
     AdminEventOut,
     AdminUserOut,
@@ -274,7 +290,23 @@ async def admin_dashboard_metrics(_: User = Depends(require_admin_local), sessio
     new_complaints = await session.scalar(
         select(func.count()).select_from(Complaint).where(Complaint.status == "pending")
     )
+    total_complaints = await session.scalar(select(func.count()).select_from(Complaint))
+    today_start = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
+    today_end = today_start + timedelta(days=1)
+    complaints_today = await session.scalar(
+        select(func.count())
+        .select_from(Complaint)
+        .where(Complaint.created_at >= today_start, Complaint.created_at < today_end)
+    )
     total_participations = await session.scalar(select(func.count()).select_from(EventParticipation))
+    events_created_today = await session.scalar(
+        select(func.count()).select_from(Event).where(Event.created_at >= today_start, Event.created_at < today_end)
+    )
+    participations_today = await session.scalar(
+        select(func.count())
+        .select_from(EventParticipation)
+        .where(EventParticipation.created_at >= today_start, EventParticipation.created_at < today_end)
+    )
     total_reviews = await session.scalar(select(func.count()).select_from(EventReview))
     avg_rating_raw = await session.scalar(
         select(func.avg(Event.average_rating)).where(
@@ -283,84 +315,158 @@ async def admin_dashboard_metrics(_: User = Depends(require_admin_local), sessio
             Event.average_rating.is_not(None),
         )
     )
+    avg_review_rating_raw = await session.scalar(select(func.avg(EventReview.rating)))
+    participations_count = int(total_participations or 0)
+    reviews_count = int(total_reviews or 0)
+    review_leave_percent = (
+        round(100.0 * reviews_count / participations_count, 1) if participations_count > 0 else None
+    )
     total_users = await session.scalar(select(func.count()).select_from(User)) or 0
+    users_registered_today = await session.scalar(
+        select(func.count()).select_from(User).where(User.created_at >= today_start, User.created_at < today_end)
+    )
     total_events = await session.scalar(select(func.count()).select_from(Event)) or 0
     active = int(active_today or 0)
     avg_rating = round(float(avg_rating_raw), 1) if avg_rating_raw is not None else None
+    avg_review_rating = (
+        round(float(avg_review_rating_raw), 1) if avg_review_rating_raw is not None else None
+    )
+
+    total_views = await count_event_views(session)
+    view_to_participation_percent = (
+        round(100.0 * participations_count / int(total_views), 1) if total_views else None
+    )
+
+    active_events = int(upcoming_events or 0)
+    participations_on_active = await session.scalar(
+        select(func.count())
+        .select_from(EventParticipation)
+        .join(Event, Event.id == EventParticipation.event_id)
+        .where(*APPROVED_VISIBLE, Event.event_datetime >= now)
+    )
+    participations_per_active_event = (
+        round(float(participations_on_active or 0) / active_events, 1) if active_events > 0 else None
+    )
+
+    users_with_participation = await session.scalar(
+        select(func.count(func.distinct(EventParticipation.user_id)))
+    )
+    repeat_participants = await session.scalar(
+        select(func.count())
+        .select_from(
+            select(EventParticipation.user_id)
+            .group_by(EventParticipation.user_id)
+            .having(func.count() >= 2)
+            .subquery()
+        )
+    )
+    repeat_participants_percent = (
+        round(100.0 * int(repeat_participants or 0) / int(users_with_participation), 1)
+        if users_with_participation
+        else None
+    )
+
+    rated_events = await session.scalar(
+        select(func.count())
+        .select_from(Event)
+        .where(*APPROVED_VISIBLE, Event.average_rating.is_not(None))
+    )
+    low_rated_events = await session.scalar(
+        select(func.count())
+        .select_from(Event)
+        .where(*APPROVED_VISIBLE, Event.average_rating.is_not(None), Event.average_rating < 3)
+    )
+    low_rated_events_percent = (
+        round(100.0 * int(low_rated_events or 0) / int(rated_events), 1) if rated_events else None
+    )
+
     return DashboardMetrics(
         total_users=int(total_users),
+        users_registered_today=int(users_registered_today or 0),
         total_events=int(total_events),
         active_events_today=active,
         active_events_today_or_future=int(upcoming_events or 0),
         new_complaints=int(new_complaints or 0),
+        total_complaints=int(total_complaints or 0),
+        complaints_today=int(complaints_today or 0),
         pending_events=int(pending_events or 0),
         banned_users=int(banned_users or 0),
         upcoming_events=int(upcoming_events or 0),
         total_participations=int(total_participations or 0),
+        events_created_today=int(events_created_today or 0),
+        participations_today=int(participations_today or 0),
         total_reviews=int(total_reviews or 0),
         avg_event_rating=avg_rating,
+        avg_review_rating=avg_review_rating,
+        review_leave_percent=review_leave_percent,
+        view_to_participation_percent=view_to_participation_percent,
+        participations_per_active_event=participations_per_active_event,
+        repeat_participants_percent=repeat_participants_percent,
+        low_rated_events_percent=low_rated_events_percent,
     )
 
 
 @router.get("/dashboard/users-chart", response_model=list[ChartPoint])
 async def admin_users_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
-    out: list[ChartPoint] = []
-    for i in range(6, -1, -1):
-        day = (now - timedelta(days=i)).date()
-        start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
-        end = start + timedelta(days=1)
-        cnt = await session.scalar(
-            select(func.count()).select_from(User).where(User.created_at >= start, User.created_at < end)
-        )
-        out.append(ChartPoint(label=day.strftime("%d.%m"), count=int(cnt or 0)))
-    return out
+    return await users_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/users-total-chart", response_model=list[ChartPoint])
+async def admin_users_total_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
+    return await users_total_chart(session, datetime.now(timezone.utc))
 
 
 @router.get("/dashboard/events-chart", response_model=list[ChartPoint])
 async def admin_events_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
-    out: list[ChartPoint] = []
-    for i in range(6, -1, -1):
-        day = (now - timedelta(days=i)).date()
-        start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
-        end = start + timedelta(days=1)
-        cnt = await session.scalar(
-            select(func.count()).select_from(Event).where(Event.created_at >= start, Event.created_at < end)
-        )
-        out.append(ChartPoint(label=day.strftime("%d.%m"), count=int(cnt or 0)))
-    return out
+    return await events_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/participations-chart", response_model=list[ChartPoint])
+async def admin_participations_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
+    return await participations_chart(session, datetime.now(timezone.utc))
 
 
 @router.get("/dashboard/complaints-chart", response_model=list[ChartPoint])
 async def admin_complaints_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
-    out: list[ChartPoint] = []
-    for i in range(6, -1, -1):
-        day = (now - timedelta(days=i)).date()
-        start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
-        end = start + timedelta(days=1)
-        cnt = await session.scalar(
-            select(func.count()).select_from(Complaint).where(Complaint.created_at >= start, Complaint.created_at < end)
-        )
-        out.append(ChartPoint(label=day.strftime("%d.%m"), count=int(cnt or 0)))
-    return out
+    return await complaints_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/complaints-total-chart", response_model=list[ChartPoint])
+async def admin_complaints_total_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
+    return await complaints_total_chart(session, datetime.now(timezone.utc))
 
 
 @router.get("/dashboard/rating-chart", response_model=list[RatingChartPoint])
 async def admin_rating_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
-    out: list[RatingChartPoint] = []
-    for i in range(6, -1, -1):
-        day = (now - timedelta(days=i)).date()
-        start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
-        end = start + timedelta(days=1)
-        avg_raw = await session.scalar(
-            select(func.avg(EventReview.rating)).where(
-                EventReview.created_at >= start,
-                EventReview.created_at < end,
-            )
-        )
-        value = round(float(avg_raw), 1) if avg_raw is not None else None
-        out.append(RatingChartPoint(label=day.strftime("%d.%m"), value=value))
-    return out
+    return await rating_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/conversion-chart", response_model=list[RatingChartPoint])
+async def admin_conversion_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
+    return await conversion_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/participations-per-event-chart", response_model=list[RatingChartPoint])
+async def admin_participations_per_event_chart(
+    _: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)
+):
+    return await participations_per_event_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/repeat-participants-chart", response_model=list[RatingChartPoint])
+async def admin_repeat_participants_chart(
+    _: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)
+):
+    return await repeat_participants_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/low-rated-events-chart", response_model=list[RatingChartPoint])
+async def admin_low_rated_events_chart(
+    _: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)
+):
+    return await low_rated_events_chart(session, datetime.now(timezone.utc))
+
+
+@router.get("/dashboard/review-leave-chart", response_model=list[RatingChartPoint])
+async def admin_review_leave_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
+    return await review_leave_chart(session, datetime.now(timezone.utc))

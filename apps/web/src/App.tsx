@@ -42,7 +42,7 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { RequireAuth } from './components/RequireAuth'
 import { useMe } from './features/auth/queries'
 import { canModerate } from './features/auth/types'
-import { isAdminHostAllowed } from './lib/adminAccess'
+import { useAdminAccessAllowed } from './lib/adminAccess'
 import { useNotifications } from './features/notifications/queries'
 import { syncPushSubscription, syncPushSubscriptionFromSwMessage } from './lib/push'
 import { useAuthStore } from './stores/authStore'
@@ -365,7 +365,8 @@ export default function App() {
   }, [token])
 
   const isAuthed = Boolean(token)
-  const showAdmin = canModerate(user?.role) && isAdminHostAllowed()
+  const adminAccessAllowed = useAdminAccessAllowed()
+  const showAdmin = canModerate(user?.role) && adminAccessAllowed
   const hasUnreadNotifications = Boolean(notificationsQ.data?.some((item) => !item.is_read))
 
   return (
