@@ -503,30 +503,14 @@ function EventsDashboardSection({
     'events' | 'participations' | 'conversion' | 'perEvent'
   >('events')
 
-  const chartConfig = {
-    events: {
-      query: eventsChartQ,
-      title: 'Новые события (за месяц)',
-      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
-    },
-    participations: {
-      query: participationsChartQ,
-      title: 'Регистрации на мероприятия (за месяц)',
-      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
-    },
-    conversion: {
-      query: conversionChartQ,
-      title: 'Конверсия просмотр → участие (за месяц)',
-      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
-    },
-    perEvent: {
-      query: participationsPerEventChartQ,
-      title: 'Участий на активное событие (за месяц)',
-      render: (data: { label: string; value: number | null }[]) => <DecimalLineChart data={data} />,
-    },
-  } as const
-
-  const active = chartConfig[chartMode]
+  const eventsChartTitle =
+    chartMode === 'events'
+      ? 'Новые события (за месяц)'
+      : chartMode === 'participations'
+        ? 'Регистрации на мероприятия (за месяц)'
+        : chartMode === 'conversion'
+          ? 'Конверсия просмотр → участие (за месяц)'
+          : 'Участий на активное событие (за месяц)'
 
   return (
     <StatSection
@@ -583,9 +567,23 @@ function EventsDashboardSection({
               </button>
             </div>
           </div>
-          <ChartQueryBody query={active.query} title={active.title}>
-            {active.render}
-          </ChartQueryBody>
+          {chartMode === 'events' ? (
+            <ChartQueryBody query={eventsChartQ} title={eventsChartTitle}>
+              {(data) => <LineChart data={data} />}
+            </ChartQueryBody>
+          ) : chartMode === 'participations' ? (
+            <ChartQueryBody query={participationsChartQ} title={eventsChartTitle}>
+              {(data) => <LineChart data={data} />}
+            </ChartQueryBody>
+          ) : chartMode === 'conversion' ? (
+            <ChartQueryBody query={conversionChartQ} title={eventsChartTitle}>
+              {(data) => <PercentLineChart data={data} />}
+            </ChartQueryBody>
+          ) : (
+            <ChartQueryBody query={participationsPerEventChartQ} title={eventsChartTitle}>
+              {(data) => <DecimalLineChart data={data} />}
+            </ChartQueryBody>
+          )}
         </>
       }
     />
@@ -605,25 +603,12 @@ function UsersDashboardSection({
 }) {
   const [chartMode, setChartMode] = useState<'registrations' | 'total' | 'repeat'>('registrations')
 
-  const chartConfig = {
-    registrations: {
-      query: usersChartQ,
-      title: 'Регистрации (за месяц)',
-      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
-    },
-    total: {
-      query: usersTotalChartQ,
-      title: 'Всего пользователей (за месяц)',
-      render: (data: { label: string; count: number }[]) => <LineChart data={data} />,
-    },
-    repeat: {
-      query: repeatParticipantsChartQ,
-      title: 'Повторные участники (за месяц)',
-      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
-    },
-  } as const
-
-  const active = chartConfig[chartMode]
+  const usersChartTitle =
+    chartMode === 'registrations'
+      ? 'Регистрации (за месяц)'
+      : chartMode === 'total'
+        ? 'Всего пользователей (за месяц)'
+        : 'Повторные участники (за месяц)'
 
   return (
     <StatSection
@@ -665,9 +650,19 @@ function UsersDashboardSection({
               </button>
             </div>
           </div>
-          <ChartQueryBody query={active.query} title={active.title}>
-            {active.render}
-          </ChartQueryBody>
+          {chartMode === 'registrations' ? (
+            <ChartQueryBody query={usersChartQ} title={usersChartTitle}>
+              {(data) => <LineChart data={data} />}
+            </ChartQueryBody>
+          ) : chartMode === 'total' ? (
+            <ChartQueryBody query={usersTotalChartQ} title={usersChartTitle}>
+              {(data) => <LineChart data={data} />}
+            </ChartQueryBody>
+          ) : (
+            <ChartQueryBody query={repeatParticipantsChartQ} title={usersChartTitle}>
+              {(data) => <PercentLineChart data={data} />}
+            </ChartQueryBody>
+          )}
         </>
       }
     />
@@ -720,25 +715,12 @@ function ReviewsDashboardSection({
 }) {
   const [chartMode, setChartMode] = useState<'rating' | 'lowRated' | 'reviewLeave'>('rating')
 
-  const chartConfig = {
-    rating: {
-      query: ratingChartQ,
-      title: 'Средний рейтинг (за месяц)',
-      render: (data: { label: string; value: number | null }[]) => <RatingLineChart data={data} />,
-    },
-    lowRated: {
-      query: lowRatedChartQ,
-      title: 'События с рейтингом < 3 (за месяц)',
-      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
-    },
-    reviewLeave: {
-      query: reviewLeaveChartQ,
-      title: 'Процент оставления отзыва (за месяц)',
-      render: (data: { label: string; value: number | null }[]) => <PercentLineChart data={data} />,
-    },
-  } as const
-
-  const active = chartConfig[chartMode]
+  const reviewsChartTitle =
+    chartMode === 'rating'
+      ? 'Средний рейтинг (за месяц)'
+      : chartMode === 'lowRated'
+        ? 'События с рейтингом < 3 (за месяц)'
+        : 'Процент оставления отзыва (за месяц)'
 
   return (
     <StatSection
@@ -780,9 +762,19 @@ function ReviewsDashboardSection({
               </button>
             </div>
           </div>
-          <ChartQueryBody query={active.query} title={active.title}>
-            {active.render}
-          </ChartQueryBody>
+          {chartMode === 'rating' ? (
+            <ChartQueryBody query={ratingChartQ} title={reviewsChartTitle}>
+              {(data) => <RatingLineChart data={data} />}
+            </ChartQueryBody>
+          ) : chartMode === 'lowRated' ? (
+            <ChartQueryBody query={lowRatedChartQ} title={reviewsChartTitle}>
+              {(data) => <PercentLineChart data={data} />}
+            </ChartQueryBody>
+          ) : (
+            <ChartQueryBody query={reviewLeaveChartQ} title={reviewsChartTitle}>
+              {(data) => <PercentLineChart data={data} />}
+            </ChartQueryBody>
+          )}
         </>
       }
     />
