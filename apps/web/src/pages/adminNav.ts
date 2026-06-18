@@ -1,5 +1,7 @@
+export const ADMIN_DASHBOARD_NAV = { to: '/admin/dashboard', label: 'Дашборд' } as const
+
 export const ADMIN_SUBNAV = [
-  { to: '/admin/dashboard', label: 'Дашборд' },
+  ADMIN_DASHBOARD_NAV,
   { to: '/admin/users', label: 'Пользователи' },
   { to: '/admin/pending', label: 'Модерация' },
   { to: '/admin/complaints', label: 'Жалобы' },

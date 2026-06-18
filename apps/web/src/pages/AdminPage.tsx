@@ -23,7 +23,7 @@ import {
   type AdminUser,
 } from '../features/admin/queries'
 import { canModerate } from '../features/auth/types'
-import { isAdminHostAllowed, useAdminAccessAllowed } from '../lib/adminAccess'
+import { isAdminHostAllowed, useAdminAccessAllowed, useAdminDashboardAccessAllowed } from '../lib/adminAccess'
 import { ComplaintReviewDialog } from '../features/admin/ComplaintReviewDialog'
 import { complaintStatusLabel, parseComplaintReason } from '../features/admin/formatComplaint'
 import { formatApiError } from '../lib/apiError'
@@ -1111,13 +1111,15 @@ function AdminComplaintsRoute() {
   return <ComplaintsTab items={complaintsQ.data} mut={mut} />
 }
 
-function AdminContent() {
+function AdminContent({ dashboardOnly = false }: { dashboardOnly?: boolean }) {
   return (
     <div className="page myEventsPage adminPage">
       <header className="myEventsHeader">
         <div>
           <h1 className="myEventsTitle">Админ-панель</h1>
-          <p className="eventDetailMuted">Управление пользователями, событиями и жалобами</p>
+          <p className="eventDetailMuted">
+            {dashboardOnly ? 'Ключевые метрики и статистика' : 'Управление пользователями, событиями и жалобами'}
+          </p>
         </div>
         <Link to="/" className="homeGhostBtn">
           На сайт
@@ -1127,9 +1129,13 @@ function AdminContent() {
       <Routes>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardTab />} />
-        <Route path="users" element={<AdminUsersRoute />} />
-        <Route path="pending" element={<AdminPendingRoute />} />
-        <Route path="complaints" element={<AdminComplaintsRoute />} />
+        {!dashboardOnly ? (
+          <>
+            <Route path="users" element={<AdminUsersRoute />} />
+            <Route path="pending" element={<AdminPendingRoute />} />
+            <Route path="complaints" element={<AdminComplaintsRoute />} />
+          </>
+        ) : null}
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Routes>
     </div>
@@ -1139,10 +1145,11 @@ function AdminContent() {
 export function AdminPage() {
   const role = useAuthStore((s) => s.user?.role)
   const adminAllowed = useAdminAccessAllowed()
+  const adminDashboardAllowed = useAdminDashboardAccessAllowed()
   if (!isAdminHostAllowed()) {
     return <Navigate to="/" replace />
   }
-  if (!adminAllowed) {
+  if (!adminDashboardAllowed) {
     return (
       <div className="page">
         <h1 className="myEventsTitle">Админ-панель</h1>
@@ -1153,9 +1160,10 @@ export function AdminPage() {
       </div>
     )
   }
+  const dashboardOnly = !adminAllowed && adminDashboardAllowed
   return (
     <RequireAuth roles={['admin']}>
-      {canModerate(role) ? <AdminContent /> : <Navigate to="/account" replace />}
+      {canModerate(role) ? <AdminContent dashboardOnly={dashboardOnly} /> : <Navigate to="/account" replace />}
     </RequireAuth>
   )
 }

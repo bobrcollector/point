@@ -36,13 +36,13 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { AccountPage } from './pages/AccountPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { ADMIN_SUBNAV } from './pages/adminNav'
+import { ADMIN_DASHBOARD_NAV, ADMIN_SUBNAV } from './pages/adminNav'
 import { AdminPage } from './pages/AdminPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { RequireAuth } from './components/RequireAuth'
 import { useMe } from './features/auth/queries'
 import { canModerate } from './features/auth/types'
-import { useAdminAccessAllowed } from './lib/adminAccess'
+import { useAdminAccessAllowed, useAdminDashboardAccessAllowed } from './lib/adminAccess'
 import { useNotifications } from './features/notifications/queries'
 import { syncPushSubscription, syncPushSubscriptionFromSwMessage } from './lib/push'
 import { useAuthStore } from './stores/authStore'
@@ -100,7 +100,7 @@ const ADMIN_NAV: NavDef[] = ADMIN_SUBNAV.map((item) => ({
 
 const LOGIN_NAV: NavDef = { to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' }
 
-function isMobileMenuRoute(pathname: string, showAdmin: boolean) {
+function isMobileMenuRoute(pathname: string, showAdmin: boolean, showAdminDashboard: boolean) {
   if (pathname.startsWith('/my')) return true
   if (pathname.startsWith('/favorites')) return true
   if (pathname.startsWith('/settings')) return true
@@ -111,6 +111,7 @@ function isMobileMenuRoute(pathname: string, showAdmin: boolean) {
   if (pathname.startsWith('/create')) return true
   if (pathname.startsWith('/events/') && pathname.endsWith('/edit')) return true
   if (showAdmin && pathname.startsWith('/admin')) return true
+  if (showAdminDashboard && pathname.startsWith('/admin/dashboard')) return true
   return false
 }
 
@@ -180,12 +181,21 @@ function navLinkClass(item: NavDef) {
   }
 }
 
+const ADMIN_DASHBOARD_MOBILE_NAV: NavDef = {
+  to: ADMIN_DASHBOARD_NAV.to,
+  title: 'Статистика',
+  label: ADMIN_DASHBOARD_NAV.label,
+  Icon: IconSliders,
+}
+
 function MobileBottomNav({
   isAuthed,
   showAdmin,
+  showAdminDashboard,
 }: {
   isAuthed: boolean
   showAdmin: boolean
+  showAdminDashboard: boolean
 }) {
   const location = useLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -195,7 +205,7 @@ function MobileBottomNav({
     ...(isAuthed ? MY_EVENTS_NAV : []),
     ...(isAuthed ? [{ to: '/favorites', title: 'Избранное', label: 'Избранное', Icon: IconHeart }] : []),
     ...(isAuthed ? [{ to: '/settings', title: 'Настройки', label: 'Настройки', Icon: IconSliders }] : []),
-    ...(showAdmin ? ADMIN_NAV : []),
+    ...(showAdmin ? ADMIN_NAV : showAdminDashboard ? [ADMIN_DASHBOARD_MOBILE_NAV] : []),
     ...(isAuthed ? [] : [{ to: '/login', title: 'Вход', label: 'Вход', Icon: IconLogIn, variant: 'cta' as const }]),
   ]
 
@@ -221,7 +231,7 @@ function MobileBottomNav({
 
   const feedActive = location.pathname === '/'
   const profileActive = isMobileProfileRoute(location.pathname, isAuthed)
-  const menuTabActive = sheetOpen || isMobileMenuRoute(location.pathname, showAdmin)
+  const menuTabActive = sheetOpen || isMobileMenuRoute(location.pathname, showAdmin, showAdminDashboard)
 
   return createPortal(
     <>
@@ -366,7 +376,9 @@ export default function App() {
 
   const isAuthed = Boolean(token)
   const adminAccessAllowed = useAdminAccessAllowed()
+  const adminDashboardAccessAllowed = useAdminDashboardAccessAllowed()
   const showAdmin = canModerate(user?.role) && adminAccessAllowed
+  const showAdminDashboard = canModerate(user?.role) && adminDashboardAccessAllowed
   const hasUnreadNotifications = Boolean(notificationsQ.data?.some((item) => !item.is_read))
 
   return (
@@ -581,7 +593,7 @@ export default function App() {
       </main>
 
       <MobileTopBar isAuthed={isAuthed} hasUnreadNotifications={hasUnreadNotifications} />
-      <MobileBottomNav isAuthed={isAuthed} showAdmin={showAdmin} />
+      <MobileBottomNav isAuthed={isAuthed} showAdmin={showAdmin} showAdminDashboard={showAdminDashboard} />
     </div>
   )
 }

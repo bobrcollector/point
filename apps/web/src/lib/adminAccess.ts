@@ -26,14 +26,26 @@ export function isAdminHostAllowed(): boolean {
   return configuredAdminHosts().has(host)
 }
 
+export function isAdminMobileClient(): boolean {
+  if (typeof window === 'undefined') return false
+  if (MOBILE_UA.test(navigator.userAgent)) return true
+  return !window.matchMedia(`(min-width: ${ADMIN_DESKTOP_MIN_WIDTH}px)`).matches
+}
+
 export function isAdminDesktopClient(): boolean {
   if (typeof window === 'undefined') return false
   if (MOBILE_UA.test(navigator.userAgent)) return false
   return window.matchMedia(`(min-width: ${ADMIN_DESKTOP_MIN_WIDTH}px)`).matches
 }
 
+/** Полная админка — только десктоп на разрешённом хосте. */
 export function isAdminAccessAllowed(): boolean {
   return isAdminHostAllowed() && isAdminDesktopClient()
+}
+
+/** Дашборд статистики — также на мобильных (PWA). */
+export function isAdminDashboardAccessAllowed(): boolean {
+  return isAdminHostAllowed() && (isAdminDesktopClient() || isAdminMobileClient())
 }
 
 function subscribeAdminDesktop(onChange: () => void): () => void {
@@ -53,4 +65,28 @@ function getAdminDesktopSnapshot(): boolean {
 export function useAdminAccessAllowed(): boolean {
   const desktop = useSyncExternalStore(subscribeAdminDesktop, getAdminDesktopSnapshot, () => false)
   return isAdminHostAllowed() && desktop
+}
+
+function subscribeAdminMobile(onChange: () => void): () => void {
+  const mq = window.matchMedia(`(max-width: ${ADMIN_DESKTOP_MIN_WIDTH - 1}px)`)
+  mq.addEventListener('change', onChange)
+  window.addEventListener('resize', onChange)
+  return () => {
+    mq.removeEventListener('change', onChange)
+    window.removeEventListener('resize', onChange)
+  }
+}
+
+function getAdminMobileSnapshot(): boolean {
+  return isAdminMobileClient()
+}
+
+export function useAdminMobileClient(): boolean {
+  return useSyncExternalStore(subscribeAdminMobile, getAdminMobileSnapshot, () => false)
+}
+
+export function useAdminDashboardAccessAllowed(): boolean {
+  const desktop = useSyncExternalStore(subscribeAdminDesktop, getAdminDesktopSnapshot, () => false)
+  const mobile = useSyncExternalStore(subscribeAdminMobile, getAdminMobileSnapshot, () => false)
+  return isAdminHostAllowed() && (desktop || mobile)
 }
