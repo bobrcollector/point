@@ -84,6 +84,11 @@ class ChartPoint(BaseModel):
     count: int
 
 
+class RatingChartPoint(BaseModel):
+    label: str
+    value: float | None = None
+
+
 class DashboardMetrics(BaseModel):
     total_users: int
     total_events: int

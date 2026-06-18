@@ -8,6 +8,7 @@ import {
   useAdminMetrics,
   useAdminMutations,
   useAdminPendingEvents,
+  useAdminRatingChart,
   useAdminUsers,
   useAdminUsersChart,
   type AdminComplaint,
@@ -145,6 +146,116 @@ function LineChart({ data }: { data: { label: string; count: number }[] }) {
   )
 }
 
+const RATING_Y_MIN = 1
+const RATING_Y_MAX = 5
+const RATING_TICKS = [5, 4, 3, 2, 1]
+
+type RatingChartPoint = { label: string; value: number | null; x: number; y: number | null }
+
+function buildRatingPoints(data: { label: string; value: number | null }[]): RatingChartPoint[] {
+  const n = data.length
+  const plotSpan = 100 - CHART_PAD_TOP
+  const range = RATING_Y_MAX - RATING_Y_MIN || 1
+
+  return data.map((p, i) => {
+    const x = n <= 1 ? 50 : ((i + 0.5) / n) * 100
+    if (p.value == null) return { ...p, x, y: null }
+    const ratio = (p.value - RATING_Y_MIN) / range
+    const y = CHART_PAD_TOP + (1 - ratio) * plotSpan
+    return { ...p, x, y }
+  })
+}
+
+function ratingToTopPercent(value: number): number {
+  const plotSpan = 100 - CHART_PAD_TOP
+  const range = RATING_Y_MAX - RATING_Y_MIN || 1
+  const ratio = (value - RATING_Y_MIN) / range
+  return CHART_PAD_TOP + (1 - ratio) * plotSpan
+}
+
+function RatingLineChart({ data }: { data: { label: string; value: number | null }[] }) {
+  const points = useMemo(() => buildRatingPoints(data), [data])
+  const lineSegments = useMemo(() => {
+    const segments: string[] = []
+    let current: RatingChartPoint[] = []
+    for (const p of points) {
+      if (p.y == null || p.value == null) {
+        if (current.length) {
+          segments.push(current.map((pt) => `${pt.x},${pt.y}`).join(' '))
+          current = []
+        }
+        continue
+      }
+      current.push(p)
+    }
+    if (current.length) segments.push(current.map((pt) => `${pt.x},${pt.y}`).join(' '))
+    return segments
+  }, [points])
+
+  return (
+    <div className="adminChartWrap">
+      <div className="adminChartYAxis" style={{ width: '3ch' }} aria-hidden>
+        {RATING_TICKS.map((tick) => (
+          <span key={tick} className="adminChartYTick" style={{ top: `${ratingToTopPercent(tick)}%` }}>
+            {tick}
+          </span>
+        ))}
+      </div>
+
+      <div className="adminChartMain">
+        <div className="adminChartPlot">
+          <div className="adminChartGrid" aria-hidden>
+            {RATING_TICKS.map((tick) => (
+              <div
+                key={tick}
+                className="adminChartGridLine"
+                style={{ top: `${ratingToTopPercent(tick)}%` }}
+              />
+            ))}
+            {points.map((p) => (
+              <div key={`v-${p.label}`} className="adminChartGridLineV" style={{ left: `${p.x}%` }} />
+            ))}
+          </div>
+
+          <svg className="adminLineChartSvg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+            {lineSegments.map((segment, idx) => (
+              <polyline key={idx} className="adminLineChartPath" points={segment} />
+            ))}
+          </svg>
+
+          <div className="adminLineChartMarkers" aria-hidden>
+            {points.map((p) =>
+              p.y == null || p.value == null ? null : (
+                <div
+                  key={p.label}
+                  className="adminLineChartMarker"
+                  style={{ left: `${p.x}%`, top: `${p.y}%` }}
+                >
+                  <span className="adminLineChartDot" />
+                  <span className="adminChartValue">{p.value.toFixed(1)}</span>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+
+        <div
+          className="adminChartXAxis"
+          style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}
+          aria-hidden
+        >
+          {points.map((p) => (
+            <div key={p.label} className="adminChartXSlot">
+              <span className="adminChartXTick" />
+              <span className="adminChartLabel">{p.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function formatRating(value: number | null | undefined) {
   return value != null ? value.toFixed(1) : '—'
 }
@@ -191,6 +302,7 @@ function DashboardTab() {
   const usersChartQ = useAdminUsersChart()
   const eventsChartQ = useAdminEventsChart()
   const complaintsChartQ = useAdminComplaintsChart()
+  const ratingChartQ = useAdminRatingChart()
   const m = metricsQ.data
 
   return (
@@ -277,6 +389,16 @@ function DashboardTab() {
               <MetricTile value={m?.total_reviews ?? '—'} label="Всего отзывов" />
               <MetricTile value={formatRating(m?.avg_event_rating)} label="Средний рейтинг" />
             </>
+          }
+          chart={
+            ratingChartQ.data ? (
+              <>
+                <h4 className="adminStatChartTitle">Средний рейтинг (7 дней)</h4>
+                <RatingLineChart data={ratingChartQ.data} />
+              </>
+            ) : (
+              <p className="pageSub">…</p>
+            )
           }
         />
       </div>

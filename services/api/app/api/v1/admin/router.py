@@ -13,6 +13,7 @@ from app.api.v1.admin.schemas import (
     ChartPoint,
     ComplaintAdminOut,
     DashboardMetrics,
+    RatingChartPoint,
     ModerateEventPayload,
     ResolveComplaintPayload,
     RoleUpdate,
@@ -343,4 +344,23 @@ async def admin_complaints_chart(_: User = Depends(require_admin_local), session
             select(func.count()).select_from(Complaint).where(Complaint.created_at >= start, Complaint.created_at < end)
         )
         out.append(ChartPoint(label=day.strftime("%d.%m"), count=int(cnt or 0)))
+    return out
+
+
+@router.get("/dashboard/rating-chart", response_model=list[RatingChartPoint])
+async def admin_rating_chart(_: User = Depends(require_admin_local), session: AsyncSession = Depends(get_db)):
+    now = datetime.now(timezone.utc)
+    out: list[RatingChartPoint] = []
+    for i in range(6, -1, -1):
+        day = (now - timedelta(days=i)).date()
+        start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
+        end = start + timedelta(days=1)
+        avg_raw = await session.scalar(
+            select(func.avg(EventReview.rating)).where(
+                EventReview.created_at >= start,
+                EventReview.created_at < end,
+            )
+        )
+        value = round(float(avg_raw), 1) if avg_raw is not None else None
+        out.append(RatingChartPoint(label=day.strftime("%d.%m"), value=value))
     return out

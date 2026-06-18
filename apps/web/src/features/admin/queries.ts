@@ -52,6 +52,7 @@ const MetricsSchema = z.object({
 })
 
 const ChartPointSchema = z.object({ label: z.string(), count: z.number() })
+const RatingChartPointSchema = z.object({ label: z.string(), value: z.number().nullable() })
 
 export type AdminUser = z.infer<typeof AdminUserSchema>
 export type AdminEvent = z.infer<typeof AdminEventSchema>
@@ -93,6 +94,16 @@ export function useAdminComplaintsChart() {
     queryFn: async () => {
       const res = await api.get('/api/v1/admin/dashboard/complaints-chart')
       return z.array(ChartPointSchema).parse(res.data)
+    },
+  })
+}
+
+export function useAdminRatingChart() {
+  return useQuery({
+    queryKey: ['admin', 'rating-chart'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/admin/dashboard/rating-chart')
+      return z.array(RatingChartPointSchema).parse(res.data)
     },
   })
 }
