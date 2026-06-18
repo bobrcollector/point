@@ -2897,9 +2897,9 @@ button.mapEventCardGhost {
 
   .main {
     padding-top: calc(68px + env(safe-area-inset-top, 0px));
-    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
     padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
   }
 
   .pageHeader {
@@ -4573,6 +4573,19 @@ button.mapEventCardGhost {
 
 /* Admin dashboard & notifications */
 .adminTabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.adminListSearch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.adminListSearchInput {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
 .adminTabPanel { display: flex; flex-direction: column; gap: 12px; }
 .adminDashboardSections { display: flex; flex-direction: column; gap: 16px; }
 .adminStatSection { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); }
@@ -5040,6 +5053,91 @@ button.mapEventCardGhost {
 
   .statusBadge {
     align-self: center;
+  }
+
+  /* Горизонтальные отступы — только у .main; страницы и блоки не прилипают к краям */
+  .main > .page,
+  .main > .homePage,
+  .main > .myEventsPage,
+  .main > .accountPage,
+  .main > .adminPage,
+  .main > .notificationsPage,
+  .main > .eventManagePage,
+  .main > .settingsPage,
+  .main > .eventDetailPage,
+  .main > .authPage {
+    padding-left: 0;
+    padding-right: 0;
+    margin-inline: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .main .homePrimaryBtn,
+  .main .homeGhostBtn,
+  .main .eventDetailBtn,
+  .main .pill,
+  .main .segBtn,
+  .main .segmented,
+  .main .homeToolbar,
+  .main .homeFilterPanel,
+  .main .listFilterBar,
+  .main .listFilterSelect,
+  .main .adminStatSection,
+  .main .adminCard,
+  .main .adminTabPanel,
+  .main .adminDashboardSections,
+  .main .adminFilters,
+  .main .adminListSearch,
+  .main .adminListSearchInput,
+  .main .accountSection,
+  .main .profileViewCard,
+  .main .authCard,
+  .main .notifRow,
+  .main .notifList,
+  .main .organizerEventCard,
+  .main .eventListCard,
+  .main .eventDetailPanel,
+  .main .eventDetailActionsBar,
+  .main .eventDetailInfoGrid,
+  .main .eventWizardPanel,
+  .main .emptyCard,
+  .main .myEventsEmpty,
+  .main .myEventsNotice,
+  .main .card,
+  .main .homeEmptySearch,
+  .main .pageHeader,
+  .main .myEventsHeader,
+  .main .input,
+  .main .select,
+  .main .authForm,
+  .main .accountForm,
+  .main .interestGrid,
+  .main .eventDetailModal,
+  .main .adminModal,
+  .main .homeSearchRow,
+  .main .homeShell {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .main .listFilterSelect {
+    flex: 1 1 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .main .adminFilters {
+    flex-wrap: wrap;
+  }
+
+  .main .adminStatChartHead .adminFilters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

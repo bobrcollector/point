@@ -38,7 +38,6 @@
     max-width: 100%;
     min-width: 0;
     margin-inline: 0;
-    padding-inline: 0;
     overflow-x: clip;
   }
 
@@ -48,12 +47,6 @@
   .eventManagePage,
   .settingsPage {
     padding-block: 0 20px;
-  }
-
-  .notificationsPage,
-  .adminPage {
-    padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
-    box-sizing: border-box;
   }
 
   .cardTitle,
@@ -617,7 +610,7 @@
 
   .accountPage,
   .settingsPage {
-    padding: 0;
+    padding-block: 0 20px;
   }
 
   .accountHeader {
@@ -759,14 +752,6 @@
   .notifList {
     width: 100%;
     gap: 12px;
-  }
-
-  .notificationsPage .listFilterBar,
-  .notificationsPage .emptyCard,
-  .notificationsPage .authError,
-  .notificationsPage .pageSub {
-    width: 100%;
-    box-sizing: border-box;
   }
 
   /* ——— Карточки ленты ——— */

@@ -26,6 +26,7 @@ import { canModerate } from '../features/auth/types'
 import { isAdminHostAllowed, useAdminAccessAllowed, useAdminDashboardAccessAllowed } from '../lib/adminAccess'
 import { ComplaintReviewDialog } from '../features/admin/ComplaintReviewDialog'
 import { complaintStatusLabel, parseComplaintReason } from '../features/admin/formatComplaint'
+import { matchesAdminSearch } from '../features/admin/search'
 import { formatApiError } from '../lib/apiError'
 import { useAuthStore } from '../stores/authStore'
 
@@ -37,6 +38,36 @@ function formatDt(iso: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function AdminListSearch({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+}) {
+  return (
+    <div className="adminListSearch">
+      <label className="listFilterLabel" htmlFor={id}>
+        Поиск
+      </label>
+      <input
+        id={id}
+        type="search"
+        className="input adminListSearchInput"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete="off"
+        enterKeyHint="search"
+      />
+    </div>
+  )
 }
 
 const CHART_PAD_TOP = 12
@@ -853,13 +884,24 @@ function DashboardTab() {
 
 function UsersTab({ users, mut }: { users: AdminUser[]; mut: ReturnType<typeof useAdminMutations> }) {
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const filtered = useMemo(() => {
-    if (roleFilter === 'all') return users
-    return users.filter((u) => u.role === roleFilter)
-  }, [users, roleFilter])
+    let list = users
+    if (roleFilter !== 'all') {
+      list = list.filter((u) => u.role === roleFilter)
+    }
+    if (!searchQuery.trim()) return list
+    return list.filter((u) => matchesAdminSearch(searchQuery, u.email, u.user_id, u.role))
+  }, [users, roleFilter, searchQuery])
 
   return (
     <div className="adminTabPanel">
+      <AdminListSearch
+        id="admin-users-search"
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Email, ID или роль…"
+      />
       <div className="adminFilters">
         {(['all', 'user', 'admin'] as const).map((r) => (
           <button key={r} type="button" className={roleFilter === r ? 'pill active' : 'pill'} onClick={() => setRoleFilter(r)}>
@@ -867,6 +909,9 @@ function UsersTab({ users, mut }: { users: AdminUser[]; mut: ReturnType<typeof u
           </button>
         ))}
       </div>
+      {filtered.length === 0 ? (
+        <p className="emptyCard">{searchQuery.trim() ? 'Ничего не найдено' : 'Пользователей нет'}</p>
+      ) : (
       <div className="adminList">
         {filtered.map((u) => (
           <article key={u.user_id} className="adminCard">
@@ -908,11 +953,13 @@ function UsersTab({ users, mut }: { users: AdminUser[]; mut: ReturnType<typeof u
           </article>
         ))}
       </div>
+      )}
     </div>
   )
 }
 
 function PendingTab({ events, mut }: { events: AdminEvent[]; mut: ReturnType<typeof useAdminMutations> }) {
+  const [searchQuery, setSearchQuery] = useState('')
   const [rejectEvent, setRejectEvent] = useState<AdminEvent | null>(null)
   const [reason, setReason] = useState('')
   const [blockUser, setBlockUser] = useState(false)
@@ -935,11 +982,36 @@ function PendingTab({ events, mut }: { events: AdminEvent[]; mut: ReturnType<typ
     setActionError(formatApiError(err, 'Не удалось обновить статус события'))
   }
 
+  const filteredEvents = useMemo(
+    () =>
+      events.filter((ev) =>
+        matchesAdminSearch(
+          searchQuery,
+          ev.title,
+          ev.description,
+          ev.location,
+          ev.event_id,
+          ev.organizer_id,
+          ev.status,
+        ),
+      ),
+    [events, searchQuery],
+  )
+
   return (
     <div className="adminTabPanel">
+      <AdminListSearch
+        id="admin-pending-search"
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Название, место, описание…"
+      />
       {actionError ? <p className="authBanner">{actionError}</p> : null}
+      {filteredEvents.length === 0 ? (
+        <p className="emptyCard">{searchQuery.trim() ? 'Ничего не найдено' : 'Событий на модерации нет'}</p>
+      ) : (
       <div className="adminList">
-        {events.map((ev) => (
+        {filteredEvents.map((ev) => (
           <article key={ev.event_id} className="adminCard">
             <div className="adminCardHead">
               <strong>{ev.title}</strong>
@@ -977,7 +1049,7 @@ function PendingTab({ events, mut }: { events: AdminEvent[]; mut: ReturnType<typ
           </article>
         ))}
       </div>
-      {events.length === 0 ? <p className="emptyCard">Нет событий на модерации</p> : null}
+      )}
 
       {rejectEvent ? (
         <div className="eventDetailModalBackdrop" role="presentation" onMouseDown={closeRejectDialog}>
@@ -1045,11 +1117,41 @@ function PendingTab({ events, mut }: { events: AdminEvent[]; mut: ReturnType<typ
 
 function ComplaintsTab({ items, mut }: { items: AdminComplaint[]; mut: ReturnType<typeof useAdminMutations> }) {
   const [selected, setSelected] = useState<AdminComplaint | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredItems = useMemo(
+    () =>
+      items.filter((c) => {
+        const parsed = parseComplaintReason(c.reason)
+        return matchesAdminSearch(
+          searchQuery,
+          c.user_name,
+          c.event_title,
+          parsed.title,
+          parsed.comment,
+          c.reason,
+          c.complaint_id,
+          c.event_id,
+          c.user_id,
+          c.status,
+        )
+      }),
+    [items, searchQuery],
+  )
 
   return (
     <div className="adminTabPanel">
+      <AdminListSearch
+        id="admin-complaints-search"
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Пользователь, событие, текст жалобы…"
+      />
+      {filteredItems.length === 0 ? (
+        <p className="emptyCard">{searchQuery.trim() ? 'Ничего не найдено' : 'Жалоб нет'}</p>
+      ) : (
       <div className="adminList">
-        {items.map((c) => {
+        {filteredItems.map((c) => {
           const parsed = parseComplaintReason(c.reason)
           return (
             <article key={c.complaint_id} className="adminCard">
@@ -1075,7 +1177,7 @@ function ComplaintsTab({ items, mut }: { items: AdminComplaint[]; mut: ReturnTyp
           )
         })}
       </div>
-      {items.length === 0 ? <p className="emptyCard">Жалоб нет</p> : null}
+      )}
 
       {selected ? (
         <ComplaintReviewDialog complaint={selected} mut={mut} onClose={() => setSelected(null)} />
