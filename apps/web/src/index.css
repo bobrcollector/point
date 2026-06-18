@@ -4597,10 +4597,10 @@ button.mapEventCardGhost {
 .adminMetricsGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .adminStatSection .adminMetricTile { background: color-mix(in srgb, var(--bg) 55%, var(--panel)); }
 .adminStatSectionUrgent .adminMetricTile { background: color-mix(in srgb, var(--panel) 88%, #fff); }
-.adminMetricTile { border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; }
+.adminMetricTile { border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; min-width: 0; overflow: hidden; }
 .adminMetricTileWarn .adminMetricValue { color: #b91c1c; }
-.adminMetricValue { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; }
-.adminMetricLabel { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.adminMetricValue { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
+.adminMetricLabel { font-size: 13px; color: var(--muted); margin-top: 4px; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; line-height: 1.35; }
 .adminChartsRow { display: grid; grid-template-columns: 1fr; gap: 20px; }
 .adminCardTitle { margin: 0 0 16px; font-size: 16px; font-weight: 800; }
 .adminChartWrap {
@@ -5134,10 +5134,11 @@ button.mapEventCardGhost {
   }
 
   .main .adminStatChartHead .adminFilters {
-    overflow-x: auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-x: visible;
     max-width: 100%;
-    -webkit-overflow-scrolling: touch;
+    gap: 6px;
   }
 }
 

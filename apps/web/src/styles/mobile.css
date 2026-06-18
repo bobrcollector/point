@@ -744,6 +744,105 @@
     min-width: 0;
   }
 
+  /* ——— Дашборд PWA: текст внутри виджетов, по центру ——— */
+  .adminTabPanel .accountSectionTitle {
+    text-align: center;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
+  .adminStatSectionTitle {
+    text-align: center;
+    font-size: 16px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .adminMetricsGrid {
+    align-items: stretch;
+  }
+
+  .adminMetricTile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .adminMetricValue {
+    width: 100%;
+    font-size: clamp(20px, 6.5vw, 26px);
+    line-height: 1.1;
+    text-align: center;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .adminMetricLabel {
+    width: 100%;
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: center;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  .adminStatChartTitle {
+    text-align: center;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.3;
+  }
+
+  .adminStatChartHead .adminFilters {
+    justify-content: center;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    gap: 6px;
+  }
+
+  .adminStatChartHead .adminFilters .pill {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    padding: 8px 10px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .adminChartWrap {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  .adminChartPlot {
+    overflow: hidden;
+  }
+
+  .adminLineChartMarkersCompact .adminChartValue {
+    max-width: 2.8rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .adminChartLabel {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    padding-inline: 1px;
+  }
+
   .notifRow {
     padding: 12px 14px;
     min-width: 0;
